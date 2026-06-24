@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+atomic_center.zip
+
+# Device-specific runtime state (bindings, sessions, local SQLite).
+# Must NOT be carried to another device — it is recreated on first run.
+data/
+atomic/
