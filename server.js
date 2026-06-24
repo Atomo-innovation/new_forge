@@ -313,9 +313,50 @@ async function verifyMeshCentralOnStartup() {
   }
 }
 
+function resolveSession(req) {
+  const signed = sessionCookie.getSignedSessionFromRequest(req);
+  if (signed) {
+    session.restoreSessionRecord(signed);
+    const sess = session.getSessionRecord(signed.sessionId);
+    if (sess) return sess;
+  }
+
+  const sessionId = sessionCookie.getSessionIdFromRequest(req);
+  if (sessionId) {
+    const sess = session.getSessionRecord(sessionId);
+    if (sess) return sess;
+    return null;
+  }
+  return session.getSessionRecord(session.getActiveSession()?.sessionId);
+}
+
+function attachSessionCookie(res, payload) {
+  const data = payload?.data || payload;
+  if (!data?.sessionId) return;
+  const record = session.getSessionRecord(data.sessionId);
+  if (record) {
+    sessionCookie.attachSessionCookies(res, session.sanitizeSession(record));
+  }
+}
+
 app.use(express.json());
 app.use(masterControl.attachMasterContext);
 serverlessLifecycle.registerExpressHooks(app);
+
+if (isServerlessRuntime()) {
+  app.use((req, res, next) => {
+    const origJson = res.json.bind(res);
+    res.json = (body) => {
+      const sess = resolveSession(req);
+      if (sess) {
+        sessionCookie.attachSessionCookies(res, session.sanitizeSession(sess));
+      }
+      return origJson(body);
+    };
+    next();
+  });
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/master', masterControl.routes);
 
@@ -460,27 +501,6 @@ app.get('/dashboard', (_req, res) => {
   res.redirect('/overview');
 });
 
-function resolveSession(req) {
-  const sessionId = sessionCookie.getSessionIdFromRequest(req);
-  if (sessionId) {
-    const sess = session.getSessionRecord(sessionId);
-    if (sess) return sess;
-    // IMPORTANT: If a sessionId was provided but is invalid/expired,
-    // do NOT fall back to the active session. That causes "old user"
-    // sessions to leak into new signup/login flows in the browser.
-    return null;
-  }
-  return session.getSessionRecord(session.getActiveSession()?.sessionId);
-}
-
-function attachSessionCookie(res, payload) {
-  if (payload?.data?.sessionId) {
-    sessionCookie.setSessionCookie(res, payload.data.sessionId);
-  } else if (payload?.sessionId) {
-    sessionCookie.setSessionCookie(res, payload.sessionId);
-  }
-}
-
 app.get('/api/session', async (req, res) => {
   const sess = resolveSession(req);
   if (!sess) {
@@ -490,13 +510,16 @@ app.get('/api/session', async (req, res) => {
   let onboardingComplete = deviceProfile.isUserOnboarded(sess.meshUserId);
   let cloudRegistrationReset = false;
 
-  if (onboardingComplete && (await isAtomicCenterOnline())) {
-    const cloudSync = await syncOnboardingWithCloud({
+  const online = await isAtomicCenterOnline();
+  if (online) {
+    const cloudSyncResult = await syncOnboardingWithCloud({
       meshUserId: sess.meshUserId,
       username: sess.username,
     });
-    onboardingComplete = cloudSync.onboardingComplete;
-    cloudRegistrationReset = cloudSync.reset === true;
+    onboardingComplete = cloudSyncResult.onboardingComplete || onboardingComplete;
+    cloudRegistrationReset = cloudSyncResult.reset === true;
+  } else if (isServerlessRuntime() && sess.clusterRoleConfirmed) {
+    onboardingComplete = true;
   }
 
   const profile = deviceProfile.getProfile();
@@ -882,7 +905,7 @@ app.post('/api/device/cloud-sync/run', async (_req, res) => {
 app.post('/api/logout', (req, res) => {
   const sessionId = sessionCookie.getSessionIdFromRequest(req) || req.body?.sessionId;
   session.destroySession(sessionId);
-  sessionCookie.clearSessionCookie(res);
+  sessionCookie.clearSessionCookies(res);
   res.json({ success: true });
 });
 
