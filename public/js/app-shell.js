@@ -33,7 +33,8 @@ function setActiveNav() {
 
 async function loadSidebarUser() {
   try {
-    const res = await fetch(sessionUrl('/api/session'));
+    const url = window.AFSession ? window.AFSession.sessionUrl('/api/session') : sessionUrl('/api/session');
+    const res = await fetch(url, { credentials: 'same-origin' });
     const data = await res.json();
     if (!data.authenticated) return;
 

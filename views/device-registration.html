@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/session-client.js"></script>
 </head>
 <body class="registration-body">
   <div class="registration-shell">
@@ -337,10 +338,12 @@
 
     async function ensureAuthenticated() {
       try {
-        const url = sessionId
-          ? `/api/session?sessionId=${encodeURIComponent(sessionId)}`
-          : '/api/session';
-        const res = await fetch(url);
+        const url = window.AFSession
+          ? window.AFSession.sessionUrl('/api/session')
+          : (sessionId
+            ? `/api/session?sessionId=${encodeURIComponent(sessionId)}`
+            : '/api/session');
+        const res = await fetch(url, { credentials: 'same-origin' });
         const data = await res.json();
         if (!data.authenticated) {
           sessionStorage.removeItem('atomoSessionId');
@@ -363,7 +366,7 @@
       if (!auth) return;
 
       if (auth.onboardingComplete) {
-        window.location.replace('/dashboard');
+        window.location.replace(auth.redirectTo || '/overview');
         return;
       }
 
@@ -520,7 +523,7 @@
           if (el.id !== 'cancelBtn') el.disabled = true;
         });
         setTimeout(() => {
-          window.location.href = data.redirectTo || '/dashboard';
+          window.location.href = data.redirectTo || '/cluster-role';
         }, 3000);
       } catch (err) {
         hideProcessingOverlay(false);

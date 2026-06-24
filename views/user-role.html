@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/session-client.js"></script>
   <style>
     .role-card {
       border: 1px solid var(--border);
@@ -85,9 +86,11 @@
     }
 
     function userRoleUrl() {
-      return sessionId
-        ? `/api/user-role?sessionId=${encodeURIComponent(sessionId)}`
-        : '/api/user-role';
+      return window.AFSession
+        ? window.AFSession.sessionUrl('/api/user-role')
+        : (sessionId
+          ? `/api/user-role?sessionId=${encodeURIComponent(sessionId)}`
+          : '/api/user-role');
     }
 
     function applyClusterModeCopy(clusterMode) {
@@ -104,7 +107,7 @@
 
     async function loadRoles() {
       try {
-        const res = await fetch(userRoleUrl());
+        const res = await fetch(userRoleUrl(), { credentials: 'same-origin' });
         if (res.status === 401) {
           window.location.href = '/login';
           return;
@@ -141,6 +144,7 @@
         }
         const res = await fetch('/api/user-role', {
           method: 'POST',
+          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
             ...(sessionId ? { 'x-session-id': sessionId } : {}),
@@ -163,7 +167,17 @@
       }
     });
 
-    loadRoles();
+    (async () => {
+      const auth = window.AFSession
+        ? await window.AFSession.requireAuth({ allowPaths: ['/user-role', '/cluster-role'] })
+        : null;
+      if (window.AFSession && !auth) return;
+      if (auth?.sessionId) {
+        sessionId = auth.sessionId;
+        sessionStorage.setItem('atomoSessionId', auth.sessionId);
+      }
+      await loadRoles();
+    })();
   </script>
 </body>
 </html>

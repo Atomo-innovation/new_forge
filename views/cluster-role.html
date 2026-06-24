@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/session-client.js"></script>
   <style>
     .role-card {
       border: 1px solid var(--border);
@@ -102,9 +103,11 @@
     }
 
     function clusterRoleUrl() {
-      return sessionId
-        ? `/api/cluster-role?sessionId=${encodeURIComponent(sessionId)}`
-        : '/api/cluster-role';
+      return window.AFSession
+        ? window.AFSession.sessionUrl('/api/cluster-role')
+        : (sessionId
+          ? `/api/cluster-role?sessionId=${encodeURIComponent(sessionId)}`
+          : '/api/cluster-role');
     }
 
     backBtn.addEventListener('click', () => {
@@ -113,7 +116,7 @@
 
     async function loadCurrentRole() {
       try {
-        const res = await fetch(clusterRoleUrl());
+        const res = await fetch(clusterRoleUrl(), { credentials: 'same-origin' });
         if (res.status === 401) {
           window.location.href = '/login';
           return;
@@ -132,8 +135,6 @@
       }
     }
 
-    loadCurrentRole();
-
     saveBtn.addEventListener('click', async () => {
       hideError();
       saveBtn.disabled = true;
@@ -143,6 +144,7 @@
         const clusterMode = selected ? selected.value : 'slave';
         const res = await fetch('/api/cluster-role', {
           method: 'POST',
+          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
             ...(sessionId ? { 'x-session-id': sessionId } : {}),
@@ -169,6 +171,18 @@
         saveBtn.textContent = 'Save & Continue';
       }
     });
+
+    (async () => {
+      const auth = window.AFSession
+        ? await window.AFSession.requireAuth({ allowPaths: ['/cluster-role', '/device-registration'] })
+        : null;
+      if (window.AFSession && !auth) return;
+      if (auth?.sessionId) {
+        sessionId = auth.sessionId;
+        sessionStorage.setItem('atomoSessionId', auth.sessionId);
+      }
+      await loadCurrentRole();
+    })();
   </script>
 </body>
 </html>

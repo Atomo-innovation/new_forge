@@ -26,6 +26,7 @@ const { isServerlessRuntime } = require('./lib/runtime-env');
 const serverlessLifecycle = require('./lib/serverless-lifecycle');
 const pendingFlows = require('./lib/pending-flows');
 const sessionCookie = require('./lib/session-cookie');
+const dashboardAuth = require('./lib/dashboard-auth');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -111,6 +112,7 @@ function markOnboardingComplete(sessRecord, formEmail) {
     meshUserId: sessRecord.meshUserId,
     email: validated.email,
   });
+  dashboardAuth.markOnboardingComplete(sessRecord, validated.email);
   return { ok: true };
 }
 
@@ -325,9 +327,8 @@ function resolveSession(req) {
   if (sessionId) {
     const sess = session.getSessionRecord(sessionId);
     if (sess) return sess;
-    return null;
   }
-  return session.getSessionRecord(session.getActiveSession()?.sessionId);
+  return null;
 }
 
 function attachSessionCookie(res, payload) {
@@ -343,19 +344,19 @@ app.use(express.json());
 app.use(masterControl.attachMasterContext);
 serverlessLifecycle.registerExpressHooks(app);
 
-if (isServerlessRuntime()) {
-  app.use((req, res, next) => {
-    const origJson = res.json.bind(res);
-    res.json = (body) => {
-      const sess = resolveSession(req);
-      if (sess) {
-        sessionCookie.attachSessionCookies(res, session.sanitizeSession(sess));
-      }
-      return origJson(body);
-    };
-    next();
-  });
-}
+app.use((req, res, next) => {
+  const origJson = res.json.bind(res);
+  res.json = (body) => {
+    const sess = resolveSession(req);
+    if (sess) {
+      sessionCookie.attachSessionCookies(res, session.sanitizeSession(
+        session.getSessionRecord(sess.sessionId) || sess
+      ));
+    }
+    return origJson(body);
+  };
+  next();
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/master', masterControl.routes);
@@ -507,7 +508,7 @@ app.get('/api/session', async (req, res) => {
     return res.status(401).json({ authenticated: false });
   }
 
-  let onboardingComplete = deviceProfile.isUserOnboarded(sess.meshUserId);
+  let onboardingComplete = dashboardAuth.isOnboardingComplete(sess, sess.meshUserId);
   let cloudRegistrationReset = false;
 
   const online = await isAtomicCenterOnline();
@@ -516,44 +517,53 @@ app.get('/api/session', async (req, res) => {
       meshUserId: sess.meshUserId,
       username: sess.username,
     });
-    onboardingComplete = cloudSyncResult.onboardingComplete || onboardingComplete;
+    const synced = dashboardAuth.syncFromCloud(sess, cloudSyncResult);
+    if (synced) {
+      session.restoreSessionRecord(session.sanitizeSession(synced));
+    }
+    onboardingComplete = dashboardAuth.isOnboardingComplete(
+      session.getSessionRecord(sess.sessionId),
+      sess.meshUserId
+    );
     cloudRegistrationReset = cloudSyncResult.reset === true;
-  } else if (isServerlessRuntime() && sess.clusterRoleConfirmed) {
-    onboardingComplete = true;
   }
 
+  const current = session.getSessionRecord(sess.sessionId) || sess;
   const profile = deviceProfile.getProfile();
-  dashboard.ensureStandaloneSessionRole(sess);
-  const clusterRoleConfirmed = session.isClusterRoleConfirmed(sess.sessionId);
-  const userRoleConfirmed = session.isUserRoleConfirmed(sess.sessionId);
-  const sessionRoleId = session.getSessionUserRole(sess.sessionId);
-  const savedRole = dashboardRbac.getUserRole(sess.meshUserId);
+  dashboard.ensureStandaloneSessionRole(current);
+  const clusterRoleConfirmed = current.clusterRoleConfirmed === true;
+  const userRoleConfirmed = current.userRoleConfirmed === true;
+  const sessionRoleId = current.userRole || null;
+  const savedRole = dashboardRbac.getUserRole(current.meshUserId);
   const activeRoleId = sessionRoleId || savedRole?.id || null;
   masterControl.bootstrapMasterControl({
-    meshUserId: sess.meshUserId,
-    username: sess.username,
+    meshUserId: current.meshUserId,
+    username: current.username,
     organizationName: profile?.organizationName,
   });
   const redirectTo = onboardingComplete
-    ? dashboard.postLoginRedirect(sess)
+    ? dashboard.postLoginRedirect(current)
     : '/device-registration';
+
+  sessionCookie.attachSessionCookies(res, session.sanitizeSession(current));
+
   res.json({
     authenticated: true,
-    username: sess.username,
-    userId: sess.meshUserId,
-    email: sess.email || null,
-    sessionId: sess.sessionId,
-    deviceRegistered: deviceProfile.isRegistered(),
+    username: current.username,
+    userId: current.meshUserId,
+    email: current.email || null,
+    sessionId: current.sessionId,
+    deviceRegistered: dashboardAuth.isDeviceRegistered(current),
     onboardingComplete,
     clusterRoleConfirmed,
-    clusterMode: profile?.clusterMode || null,
+    clusterMode: dashboardAuth.getClusterMode(current),
     userRoleConfirmed,
     userRole: activeRoleId ? dashboardRbac.getRolePayload(activeRoleId) : null,
     cloudRegistrationReset,
     redirectTo,
     profile,
     masterControl: {
-      enabled: masterControl.isFlagEnabled('master_control', { userId: sess.meshUserId }),
+      enabled: masterControl.isFlagEnabled('master_control', { userId: current.meshUserId }),
       platform: masterControl.getPlatformState(),
       role: req.masterRole || null,
     },

@@ -698,21 +698,14 @@ function showToast(msg) {
 }
 
 async function loadOverview() {
-  const sessionRes = await fetch(sessionUrl('/api/session'));
-  const session = await sessionRes.json();
-  if (!session.authenticated) {
-    window.location.href = '/login';
-    return;
-  }
-  if (session.redirectTo && !['/overview', '/dashboard'].includes(session.redirectTo)) {
-    window.location.href = session.redirectTo;
-    return;
-  }
-  if (session.sessionId) sessionStorage.setItem('atomoSessionId', session.sessionId);
+  const session = window.AFSession
+    ? await window.AFSession.requireAuth({ allowPaths: ['/overview', '/dashboard'] })
+    : null;
+  if (!session) return;
 
   if (window.LiveMetrics) window.LiveMetrics.init();
 
-  const res = await fetch(sessionUrl('/api/overview'));
+  const res = await fetch(sessionUrl('/api/overview'), { credentials: 'same-origin' });
   if (res.ok) {
     basePayload = await res.json();
     uptimeBaseSecs = basePayload.health?.uptimeBaseSecs || 1234567;
