@@ -25,6 +25,7 @@ const dashboardRbac = require('./lib/dashboard-rbac');
 const { isServerlessRuntime } = require('./lib/runtime-env');
 const serverlessLifecycle = require('./lib/serverless-lifecycle');
 const pendingFlows = require('./lib/pending-flows');
+const sessionCookie = require('./lib/session-cookie');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -460,10 +461,7 @@ app.get('/dashboard', (_req, res) => {
 });
 
 function resolveSession(req) {
-  const sessionId =
-    req.body?.sessionId ||
-    req.query?.sessionId ||
-    req.headers['x-session-id'];
+  const sessionId = sessionCookie.getSessionIdFromRequest(req);
   if (sessionId) {
     const sess = session.getSessionRecord(sessionId);
     if (sess) return sess;
@@ -473,6 +471,14 @@ function resolveSession(req) {
     return null;
   }
   return session.getSessionRecord(session.getActiveSession()?.sessionId);
+}
+
+function attachSessionCookie(res, payload) {
+  if (payload?.data?.sessionId) {
+    sessionCookie.setSessionCookie(res, payload.data.sessionId);
+  } else if (payload?.sessionId) {
+    sessionCookie.setSessionCookie(res, payload.sessionId);
+  }
 }
 
 app.get('/api/session', async (req, res) => {
@@ -874,8 +880,9 @@ app.post('/api/device/cloud-sync/run', async (_req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  const sessionId = req.body?.sessionId;
+  const sessionId = sessionCookie.getSessionIdFromRequest(req) || req.body?.sessionId;
   session.destroySession(sessionId);
+  sessionCookie.clearSessionCookie(res);
   res.json({ success: true });
 });
 
@@ -1019,6 +1026,7 @@ app.post('/api/signup/verify-2fa', async (req, res) => {
           userId: result.data.userId,
         });
         pendingSignups.delete(normalizeUsername(username));
+        attachSessionCookie(res, bindResult);
         return sendProxy(res, bindResult);
       } catch (bindErr) {
         console.error('[Auth] Signup bind failed:', bindErr.message);
@@ -1149,6 +1157,7 @@ app.post('/api/login', async (req, res) => {
 
   try {
     const result = await authLogin(username, password);
+    attachSessionCookie(res, result);
     return sendProxy(res, result);
   } catch (e) {
     console.error('[API] POST /api/login failed:', e.message, e.cause?.message || '');
