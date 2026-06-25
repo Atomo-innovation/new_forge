@@ -12,6 +12,19 @@ function eventsFingerprint(events) {
   return (events || []).map((e) => e.id).join('|');
 }
 
+function mergeEventsMonotonic(existing, incoming) {
+  const byId = new Map();
+  for (const e of incoming || []) {
+    if (e?.id) byId.set(e.id, e);
+  }
+  for (const e of existing || []) {
+    if (e?.id && !byId.has(e.id)) byId.set(e.id, e);
+  }
+  return [...byId.values()]
+    .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+    .slice(0, 50);
+}
+
 function applyLiveMetricsFromPayload(source) {
   if (!source) return;
   const m = isFaceTab
@@ -636,8 +649,6 @@ function refreshPersonLiveSections() {
     const logsHost = logsSection.querySelector('.ov-det-logs');
     if (logsHost) logsHost.innerHTML = (payload.logs || []).map((line) => `<div class="ov-det-log-line">${esc(line)}</div>`).join('');
   }
-
-  refreshEventsGallery();
 }
 
 function cropEventImageToBbox(img, bbox) {
@@ -950,14 +961,28 @@ function prependEvents(newEvents, nextPayload) {
 
 function refreshEventsOnly(nextPayload) {
   if (!nextPayload) return;
-  const nextEvents = nextPayload.events || [];
-  const fp = eventsFingerprint(nextEvents);
-  if (fp !== lastEventsFingerprint) {
-    payload = nextPayload;
-    refreshEventsGallery(true);
+  const merged = mergeEventsMonotonic(payload?.events, nextPayload.events);
+  const knownIds = new Set((payload?.events || []).map((e) => e.id));
+  const fresh = merged.filter((e) => !knownIds.has(e.id));
+
+  payload = { ...payload, ...nextPayload, events: merged };
+
+  if (fresh.length) {
+    prependEvents(fresh, payload);
     return;
   }
-  payload = { ...payload, ...nextPayload, events: payload?.events || nextEvents };
+
+  lastEventsFingerprint = eventsFingerprint(merged);
+  applyLiveMetricsFromPayload(nextPayload);
+}
+
+function syncLiveMetrics(nextPayload) {
+  if (!nextPayload) return;
+  payload = {
+    ...payload,
+    ...nextPayload,
+    events: payload?.events?.length ? payload.events : (nextPayload.events || []),
+  };
   applyLiveMetricsFromPayload(nextPayload);
 }
 
@@ -1004,15 +1029,8 @@ window.DetectionTab = {
   reload: loadDetectionTab,
   refreshEventsOnly,
   prependEvents,
+  syncLiveMetrics,
   syncLivePayload(nextPayload) {
-    if (!nextPayload) return;
-    const currentIds = new Set((payload?.events || []).map((e) => e.id));
-    const incoming = nextPayload.events || [];
-    const fresh = incoming.filter((e) => !currentIds.has(e.id));
-    if (fresh.length) {
-      prependEvents(fresh, { ...payload, ...nextPayload, events: [...fresh, ...(payload?.events || [])].slice(0, 50) });
-      return;
-    }
     refreshEventsOnly(nextPayload);
   },
 };
@@ -1027,13 +1045,14 @@ function startRefresh() {
       const res = await fetch(sessionUrl(`/api/detection/${slug}`));
       if (!res.ok) return;
       const next = await res.json();
-      payload = next;
       const search = document.getElementById('detEventSearch');
       if (search) eventSearchQuery = search.value;
-      if (!isLiveTab || !document.getElementById('personWorkbench')) {
+      if (isLiveTab && document.getElementById('personWorkbench')) {
+        refreshEventsOnly(next);
+        if (window.PersonLive?.refresh) window.PersonLive.refresh();
+      } else {
+        payload = next;
         refreshEventsGallery();
-      } else if (window.PersonLive?.refresh) {
-        window.PersonLive.refresh();
       }
     } catch {
       /* ignore */

@@ -930,6 +930,10 @@
         return;
       }
 
+      if (isVideoFilePreview(preview) && host.querySelector('video.ov-plive-media') && streamInitialized) {
+        return;
+      }
+
       stopSimAnim();
       stopHls();
       stopWhep();
@@ -1126,7 +1130,7 @@
           if (streamHost?.querySelector('video.ov-plive-media')) {
             startOverlayLoop();
             drawBoxesOverlay();
-          } else if (simAnimTimer && isVideoFilePreview(frameData?.preview)) {
+          } else if (isVideoFilePreview(frameData?.preview) && !streamHost?.querySelector('video.ov-plive-media')) {
             initStreamWithPreview({ preview: frameData.preview, camera: frameData.camera });
           } else if (!simAnimTimer && frameData.preview?.simulated) {
             startSimAnim(frameData.camera?.name);
@@ -1138,8 +1142,8 @@
         updateStatsOnly();
         updateInferenceUi(frameData);
 
-        if (frameData.payload && window.DetectionTab?.syncLivePayload) {
-          window.DetectionTab.syncLivePayload(frameData.payload);
+        if (frameData.payload && window.DetectionTab?.syncLiveMetrics) {
+          window.DetectionTab.syncLiveMetrics(frameData.payload);
         }
 
         if (inferenceRunning && frameData.wsUrl && frameData.workerSource !== 'local-cpu' && !detWs) {
