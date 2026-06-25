@@ -1609,9 +1609,9 @@ body.processing-active {
 }
 
 .processing-logo {
-  width: 44px;
+  width: 52px;
   height: auto;
-  max-height: 42px;
+  max-height: 48px;
   object-fit: contain;
   display: block;
 }
