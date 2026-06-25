@@ -45,6 +45,7 @@ const CHECK_LABELS = {
 
 let cameras = [];
 let stats = { total: 0, online: 0, offline: 0 };
+let demoMode = false;
 let lastValidation = null;
 let isTesting = false;
 let modalOpen = false;
@@ -121,7 +122,7 @@ function renderCameraTile(cam) {
         <span class="ov-cam-tile-icon" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
         </span>
-        <button type="button" class="ov-cam-icon-btn" data-action="delete" data-id="${cam.id}" title="Remove camera" aria-label="Remove ${esc(cam.name)}">
+        <button type="button" class="ov-cam-icon-btn" data-action="delete" data-id="${cam.id}" title="Remove camera" aria-label="Remove ${esc(cam.name)}" ${demoMode ? 'hidden' : ''}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
         </button>
       </div>
@@ -138,6 +139,7 @@ function renderCameraTile(cam) {
 
 function renderCameraGrid() {
   const tiles = cameras.map(renderCameraTile).join('');
+  if (demoMode) return tiles;
   const addTile = `
     <button type="button" class="ov-cam-tile ov-cam-tile-add" data-action="open-add" aria-label="Add camera">
       <span class="ov-cam-tile-plus" aria-hidden="true">
@@ -346,7 +348,7 @@ function renderShell() {
             </div>
             <div class="ov-merged-sub">${cameras.length ? `${cameras.length} registered camera${cameras.length === 1 ? '' : 's'}` : 'No cameras yet — add your first source'}</div>
           </div>
-          <button type="button" class="ov-cam-add-btn" data-action="open-add" aria-label="Add camera">
+          <button type="button" class="ov-cam-add-btn" data-action="open-add" aria-label="Add camera" ${demoMode ? 'hidden' : ''}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
             <span>Add camera</span>
           </button>
@@ -539,6 +541,7 @@ async function loadCameras() {
     const data = await res.json();
     cameras = data.cameras || [];
     stats = data.stats || { total: cameras.length, online: 0, offline: 0 };
+    demoMode = data.demoMode === true;
     if (document.getElementById('camGrid')) {
       updateGrid();
     } else if (document.getElementById('cameraManagement')) {

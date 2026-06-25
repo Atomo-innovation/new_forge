@@ -603,7 +603,9 @@
         const npu = data?.workerSource === 'npu';
         const cpu = data?.workerSource === 'local-cpu';
         mode.textContent = inferenceRunning
-          ? data?.backendConnected
+          ? data?.demoMode || data?.workerSource === 'demo'
+            ? 'Live AI (Demo)'
+            : data?.backendConnected
             ? (npu ? 'Live AI (NPU)' : cpu ? 'Live AI (CPU)' : 'Live AI')
             : 'Worker offline'
           : 'Preview';
@@ -932,6 +934,14 @@
         video.playsInline = true;
         video.onerror = fallbackSim;
         host.insertBefore(video, host.firstChild);
+        const meta = document.getElementById('pliveStreamMeta');
+        if (meta) meta.textContent = preview.label || 'Demo video stream';
+        video.addEventListener('loadeddata', () => {
+          streamInitialized = true;
+          drawBoxesOverlay();
+          startOverlayLoop();
+        });
+        video.play().catch(fallbackSim);
         return;
       }
 
@@ -1014,6 +1024,9 @@
         if (usingWhepStream || usingHlsStream) {
           startOverlayLoop();
           drawBoxesOverlay();
+        } else if (host?.querySelector('video.ov-plive-media')) {
+          startOverlayLoop();
+          drawBoxesOverlay();
         } else if (!simAnimTimer && frameData.preview?.simulated) {
           startSimAnim(frameData.camera?.name);
         } else {
@@ -1085,7 +1098,10 @@
         if (data.preview) {
           frameData = { ...(frameData || {}), preview: data.preview, camera: data.camera };
         }
-        if (data.backendReachable === false) {
+        if (data.demoMode || data.payload?.state?.inferenceRunning) {
+          inferenceRunning = true;
+        }
+        if (data.backendReachable === false && !data.demoMode) {
           showToast('Vision backend offline — preview mode only');
         }
       } catch (err) {
@@ -1131,20 +1147,49 @@
       return selectedCameraId;
     }
 
+    async function ensureDemoDetection(cameraId) {
+      try {
+        const res = await fetch(sessionUrl(`/api/detection/person/live/${encodeURIComponent(cameraId)}/start`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (res.ok && data.ok !== false) {
+          inferenceRunning = true;
+          if (data.payload) payload = data.payload;
+          updateInferenceUi(data);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     async function initFromPayload(detPayload) {
       payload = detPayload;
       currentConfidence = payload?.state?.confidence ?? 0.32;
-      const activeId = detPayload?.state?.activeCameraId;
+      const demoMode = detPayload?.demoMode === true;
+      const assigned = detPayload?.assignedCameras || [];
+      const activeId = detPayload?.state?.activeCameraId || assigned[0]?.id;
+
       if (activeId) {
         if (activeId === selectedCameraId && streamInitialized) {
           mount(true);
+          if (demoMode && (detPayload?.state?.inferenceRunning || inferenceRunning)) {
+            await ensureDemoDetection(activeId);
+            startPolling();
+          }
           return;
         }
-        if (activeId !== selectedCameraId) {
-          await selectCamera(activeId);
-          return;
+        await selectCamera(activeId);
+        if (demoMode) {
+          await ensureDemoDetection(activeId);
+          mount(true);
+          startPolling();
+          await pollFrame();
         }
+        return;
       }
+
       if (!selectedCameraId) {
         const root = getRoot();
         if (root) {

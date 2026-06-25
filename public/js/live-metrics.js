@@ -49,7 +49,40 @@
   }
 
   function mapStats(data) {
-    if (!data || data._boardOffline || data._fallback) {
+    if (!data) {
+      meta.offline = true;
+      meta.live = false;
+      return display;
+    }
+
+    if (data._demo) {
+      const prev = display || {};
+      meta.offline = false;
+      meta.live = true;
+      meta.board = 'Demo edge';
+      meta.fetchedAt = Date.now();
+      const cpu = Math.round(ema(prev.cpu, data.cpu ?? 0));
+      const ramPct = Math.round(ema(prev.ramPct, data.ram ?? 0));
+      const storagePct = Math.round(ema(prev.storagePct, data.storage ?? 0));
+      const temp = data.temp != null ? Math.round(ema(prev.temp, data.temp)) : prev.temp;
+      const npu = data.npu != null ? Math.round(ema(prev.npu, data.npu)) : prev.npu;
+      const download = data.net != null ? ema(prev.download, data.net) : prev.download;
+      return {
+        cpu,
+        npu,
+        ramPct,
+        storagePct,
+        storageUsed: prev.storageUsed ?? 0,
+        storageTotal: prev.storageTotal ?? 0,
+        temp,
+        download,
+        npuLabel: 'demo',
+        tempSource: 'demo',
+        workers: data.workers?.count || 0,
+      };
+    }
+
+    if (data._boardOffline || data._fallback) {
       meta.offline = true;
       meta.live = false;
       return display;
