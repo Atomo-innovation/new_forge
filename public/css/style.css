@@ -1593,8 +1593,8 @@ body.processing-active {
 
 .processing-spinner {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
   margin: 0 auto 1.5rem;
 }
 
@@ -1604,6 +1604,16 @@ body.processing-active {
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.processing-logo {
+  width: 44px;
+  height: auto;
+  max-height: 42px;
+  object-fit: contain;
+  display: block;
 }
 
 .processing-icon .logo-core {
@@ -1617,6 +1627,7 @@ body.processing-active {
   inset: 0;
   border-radius: 50%;
   border: 3px solid transparent;
+  z-index: 1;
 }
 
 .ring-1 {

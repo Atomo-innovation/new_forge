@@ -50,8 +50,7 @@ function resetStatOrder() {
 }
 
 function sessionUrl(path) {
-  const sid = sessionStorage.getItem('atomoSessionId');
-  return sid ? `${path}?sessionId=${encodeURIComponent(sid)}` : path;
+  return path;
 }
 
 function jitter(value, range = 3, min = 0, max = 100) {
@@ -703,14 +702,17 @@ async function loadOverview() {
     : null;
   if (!session) return;
 
+  if (session.username) {
+    window.updateSidebarUser?.(session.username);
+  }
+
   if (window.LiveMetrics) window.LiveMetrics.init();
 
   const res = await fetch(sessionUrl('/api/overview'), { credentials: 'same-origin' });
   if (res.ok) {
     basePayload = await res.json();
     uptimeBaseSecs = basePayload.health?.uptimeBaseSecs || 1234567;
-    document.getElementById('userName').textContent = basePayload.username;
-    document.getElementById('userAvatar').textContent = (basePayload.username || 'A')[0].toUpperCase();
+    window.updateSidebarUser?.(session.username || basePayload.username);
     document.getElementById('breadcrumb').textContent = `${basePayload.device?.hostname || 'Electron'} · ${(basePayload.deviceRole?.clusterMode || 'master').toUpperCase()} · ${basePayload.sync?.atomicCentreHost || 'atomic-centre.atomo.io'}`;
     if (basePayload.health?.temperatureC) {
       tempHistory = Array(10).fill(basePayload.health.temperatureC);

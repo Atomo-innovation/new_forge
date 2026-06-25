@@ -72,6 +72,8 @@
 
     let credentials = {};
 
+    sessionStorage.removeItem('atomoSessionId');
+
     function setSignupLinkVisible(visible) {
       if (!signupFooter) return;
       if (visible) {

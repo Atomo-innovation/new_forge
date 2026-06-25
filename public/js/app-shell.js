@@ -8,8 +8,7 @@ const HASH_NAV = {
 };
 
 function sessionUrl(path) {
-  const sid = sessionStorage.getItem('atomoSessionId');
-  return sid ? `${path}?sessionId=${encodeURIComponent(sid)}` : path;
+  return path;
 }
 
 function setActiveNav() {
@@ -31,6 +30,14 @@ function setActiveNav() {
   });
 }
 
+function updateSidebarUser(name) {
+  const display = String(name || 'User').trim() || 'User';
+  const userName = document.getElementById('userName');
+  const userAvatar = document.getElementById('userAvatar');
+  if (userName) userName.textContent = display;
+  if (userAvatar) userAvatar.textContent = display.charAt(0).toUpperCase();
+}
+
 async function loadSidebarUser() {
   try {
     const url = window.AFSession ? window.AFSession.sessionUrl('/api/session') : sessionUrl('/api/session');
@@ -42,11 +49,7 @@ async function loadSidebarUser() {
       sessionStorage.setItem('atomoSessionId', data.sessionId);
     }
 
-    const name = data.username || 'User';
-    const userName = document.getElementById('userName');
-    const userAvatar = document.getElementById('userAvatar');
-    if (userName) userName.textContent = name;
-    if (userAvatar) userAvatar.textContent = name.charAt(0).toUpperCase();
+    updateSidebarUser(data.username);
   } catch {
     /* ignore */
   }
@@ -148,6 +151,8 @@ function initAppShell() {
   }
   window.addEventListener('hashchange', setActiveNav);
 }
+
+window.updateSidebarUser = updateSidebarUser;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAppShell);

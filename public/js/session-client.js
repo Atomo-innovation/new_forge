@@ -13,10 +13,7 @@
   }
 
   function sessionUrl(path) {
-    const sid = sessionStorage.getItem('atomoSessionId');
-    if (!sid) return path;
-    const sep = path.includes('?') ? '&' : '?';
-    return `${path}${sep}sessionId=${encodeURIComponent(sid)}`;
+    return path;
   }
 
   async function fetchSession() {
