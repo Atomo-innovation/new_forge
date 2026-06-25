@@ -157,6 +157,10 @@
           return;
         }
         if (!res.ok) {
+          if (data.redirectTo) {
+            window.location.href = data.redirectTo;
+            return;
+          }
           throw new Error(data.error || 'Failed to save role.');
         }
         if (data.sessionId) {

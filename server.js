@@ -513,19 +513,26 @@ app.get('/api/session', async (req, res) => {
 
   const online = await isAtomicCenterOnline();
   if (online) {
-    const cloudSyncResult = await syncOnboardingWithCloud({
-      meshUserId: sess.meshUserId,
-      username: sess.username,
-    });
-    const synced = dashboardAuth.syncFromCloud(sess, cloudSyncResult);
-    if (synced) {
-      session.restoreSessionRecord(session.sanitizeSession(synced));
+    if (onboardingComplete) {
+      const cloudSyncResult = await syncOnboardingWithCloud({
+        meshUserId: sess.meshUserId,
+        username: sess.username,
+      });
+      const synced = dashboardAuth.syncFromCloud(sess, cloudSyncResult);
+      if (synced) {
+        session.restoreSessionRecord(session.sanitizeSession(synced));
+      }
+      onboardingComplete = dashboardAuth.isOnboardingComplete(
+        session.getSessionRecord(sess.sessionId),
+        sess.meshUserId
+      );
+      cloudRegistrationReset = cloudSyncResult.reset === true;
+    } else {
+      const restored = await dashboardAuth.ensureDeviceRegistered(sess);
+      if (restored) {
+        onboardingComplete = true;
+      }
     }
-    onboardingComplete = dashboardAuth.isOnboardingComplete(
-      session.getSessionRecord(sess.sessionId),
-      sess.meshUserId
-    );
-    cloudRegistrationReset = cloudSyncResult.reset === true;
   }
 
   const current = session.getSessionRecord(sess.sessionId) || sess;
@@ -629,11 +636,13 @@ app.post('/api/device/register', async (req, res) => {
   }
 
   if (deviceProfile.isUserOnboarded(sessRecord.meshUserId)) {
+    markOnboardingComplete(sessRecord, email || sessRecord.email);
     return res.json({
       success: true,
       alreadyRegistered: true,
       message: 'You have already completed device registration.',
       profile: deviceProfile.getProfile(),
+      onboardingComplete: true,
       redirectTo: '/cluster-role',
     });
   }
