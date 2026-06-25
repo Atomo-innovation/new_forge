@@ -65,14 +65,9 @@
         </div>
 
         <div class="form-group">
-          <label for="operatingSystem">Operating System <span class="required-mark">*</span></label>
-          <select id="operatingSystem" name="operatingSystem" required>
-            <option value="linux" selected>Linux</option>
-            <option value="windows">Windows</option>
-            <option value="macos">macOS</option>
-            <option value="embedded">Embedded / RTOS</option>
-            <option value="other">Other</option>
-          </select>
+          <label for="operatingSystemDisplay">Operating System <span class="required-mark">*</span></label>
+          <input type="text" id="operatingSystemDisplay" value="Linux" readonly aria-readonly="true">
+          <input type="hidden" id="operatingSystem" name="operatingSystem" value="linux">
         </div>
       </section>
 
@@ -417,7 +412,7 @@
           const p = data.profile;
           document.getElementById('deviceName').value = p.deviceName || '';
           document.getElementById('deviceType').value = p.deviceType || '';
-          document.getElementById('operatingSystem').value = p.operatingSystem || 'linux';
+          document.getElementById('operatingSystem').value = 'linux';
           document.getElementById('organizationName').value = p.organizationName || '';
           document.getElementById('adminName').value = p.adminName || '';
           document.getElementById('adminRole').value = p.adminRole || '';
