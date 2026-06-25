@@ -77,7 +77,7 @@
       const options = payload?.tab?.featureOptions || [];
       const features = payload?.state?.features || {};
       return options
-        .filter((o) => o.id !== 'detectPeople' && o.id !== 'faceDetect')
+        .filter((o) => o.id !== 'detectPeople' && o.id !== 'faceDetect' && o.id !== 'boundingBoxes')
         .map(
           (opt) => `
         <label class="ov-plive-chip ${opt.locked ? 'is-locked' : ''}" title="${esc(opt.description)}">
@@ -243,7 +243,7 @@
             <div class="ov-plive-stream-wrap">
               <div class="ov-plive-stream" id="pliveStreamHost">
                 <canvas class="ov-plive-canvas" id="pliveCanvas" aria-label="Live camera stream"></canvas>
-                <canvas class="ov-plive-overlay" id="pliveOverlay" aria-hidden="true"></canvas>
+                <canvas class="ov-plive-overlay" id="pliveOverlay" aria-hidden="true" hidden></canvas>
                 <div class="ov-plive-stream-badge" id="pliveStreamBadge">${running ? 'DETECTING' : 'LIVE PREVIEW'}</div>
                 <div class="ov-plive-stream-meta" id="pliveStreamMeta"></div>
               </div>
@@ -288,6 +288,7 @@
       } else if (!skipStreamInit || !streamInitialized) {
         initStreamDisplay();
       }
+      hideStreamOverlay();
       startPolling();
     }
 
@@ -427,7 +428,6 @@
             : { presenceActive: detections.length > 0 }),
         },
       };
-      drawBoxesOverlay();
       updateStatsOnly();
     }
 
@@ -662,7 +662,22 @@
 
     let overlayAnimTimer = null;
 
+    function shouldDrawStreamBboxes() {
+      /* Demo / live streams use video with baked-in detections — no client overlay. */
+      return false;
+    }
+
+    function hideStreamOverlay() {
+      stopOverlayLoop();
+      const overlay = document.getElementById('pliveOverlay');
+      if (!overlay) return;
+      overlay.style.display = 'none';
+      const ctx = overlay.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+    }
+
     function startOverlayLoop() {
+      if (!shouldDrawStreamBboxes()) return;
       if (overlayAnimTimer) return;
       const tick = () => {
         drawBoxesOverlay();
@@ -719,12 +734,16 @@
         ctx.fillText(label || 'Live preview', 16, h - 20);
         frame += 1;
         simAnimTimer = requestAnimationFrame(draw);
-        drawBoxesOverlay();
       }
       draw();
     }
 
     function drawBoxesOverlay() {
+      if (!shouldDrawStreamBboxes()) {
+        hideStreamOverlay();
+        return;
+      }
+
       const overlay = document.getElementById('pliveOverlay');
       const host = document.getElementById('pliveStreamHost');
       const canvas = document.getElementById('pliveCanvas');
@@ -965,7 +984,7 @@
 
       if (preview.mode === 'video' && preview.url && !preview.simulated) {
         if (canvas) canvas.style.display = 'none';
-        if (overlay) overlay.style.display = 'block';
+        if (overlay) overlay.style.display = 'none';
         const video = document.createElement('video');
         video.className = 'ov-plive-media';
         video.src = preview.url;
@@ -984,13 +1003,11 @@
         usingHlsStream = false;
         usingWhepStream = false;
         video.addEventListener('loadeddata', () => {
-          drawBoxesOverlay();
-          startOverlayLoop();
+          hideStreamOverlay();
         });
         video.addEventListener('playing', () => {
           stopSimAnim();
-          drawBoxesOverlay();
-          startOverlayLoop();
+          hideStreamOverlay();
         });
         video.onerror = fallbackSim;
         video.play().catch(() => {
