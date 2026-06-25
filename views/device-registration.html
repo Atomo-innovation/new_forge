@@ -253,16 +253,26 @@
     const processingBar = document.getElementById('processingBar');
 
     let sessionId = sessionStorage.getItem('atomoSessionId');
+    let cloudPortal = false;
     let processingTimer = null;
     let stepTimer = null;
 
-    const processingSteps = [
-      'Connecting to Atomic Center…',
-      'Creating or finding your device group…',
-      'Installing MeshCentral agent on this device…',
-      'Waiting for device to appear on Atomic Center…',
-      'Almost done — finishing registration…',
-    ];
+    function cloudPortalSteps() {
+      return cloudPortal
+        ? [
+          'Connecting to Atomic Center…',
+          'Creating or finding your device group…',
+          'Saving device profile on Atomic Center…',
+          'Almost done — finishing registration…',
+        ]
+        : [
+          'Connecting to Atomic Center…',
+          'Creating or finding your device group…',
+          'Installing MeshCentral agent on this device…',
+          'Waiting for device to appear on Atomic Center…',
+          'Almost done — finishing registration…',
+        ];
+    }
     function showAlert(message, type = 'error') {
       alertEl.textContent = message;
       alertEl.className = `alert alert-${type} visible`;
@@ -310,7 +320,10 @@
       } else if (data.agentInstall && !data.agentInstall.ok && !data.agentInstall.skipped) {
         parts.push(`<p><strong>Agent install:</strong> ${escapeHtml(data.agentInstall.error || 'Failed — check device password and try again.')}</p>`);
       } else if (data.meshCentral?.downloadUrl) {
-        parts.push(`<p><strong>Windows installer:</strong> <a href="${escapeHtml(data.meshCentral.downloadUrl)}" target="_blank" rel="noopener noreferrer">Download MeshAgent</a></p>`);
+        parts.push(`<p><strong>Agent installer:</strong> <a href="${escapeHtml(data.meshCentral.downloadUrl)}" target="_blank" rel="noopener noreferrer">Download MeshAgent</a></p>`);
+      }
+      if (data.cloudPortal && data.meshCentral?.meshGroupName) {
+        parts.push('<p><strong>Next step:</strong> Install the MeshCentral agent on your physical device so it appears in this group on Atomic Center.</p>');
       }
       if (data.meshCentral?.meshCentralUrl) {
         parts.push(`<p><a class="external-link" href="${escapeHtml(data.meshCentral.meshCentralUrl)}" target="_blank" rel="noopener noreferrer">Open Atomic Center Dashboard</a></p>`);
@@ -371,8 +384,17 @@
       }
 
       try {
-        const res = await fetch('/api/device/profile');
+        const res = await fetch('/api/device/profile', { credentials: 'same-origin' });
         const data = await res.json();
+
+        cloudPortal = data.cloudPortal === true;
+        if (cloudPortal) {
+          const hint = document.querySelector('.registration-subtitle');
+          if (hint) {
+            hint.textContent =
+              'Provide your device and organization details. On the cloud portal, your device group will be created on Atomic Center — install the MeshCentral agent on your physical device afterward.';
+          }
+        }
 
         if (data.meshcentralUrl) {
           meshDashboardLink.href = data.meshcentralUrl;
@@ -414,9 +436,36 @@
       }
     }
     function showPasswordModal() {
+      const title = document.getElementById('passwordModalTitle');
+      const subtitle = passwordModal.querySelector('.modal-subtitle');
+      const label = passwordModal.querySelector('label[for="sudoPassword"]');
+      const hint = passwordModal.querySelector('.field-hint');
+      if (cloudPortal) {
+        title.textContent = 'Atomo sign-in password required';
+        subtitle.textContent =
+          'Enter the same password you use to sign in. This creates your device group on Atomic Center. The MeshCentral agent is installed separately on your physical device.';
+        label.innerHTML = 'Atomo sign-in password <span class="required-mark">*</span>';
+        document.getElementById('sudoPassword').placeholder = 'Your Atomo Forge password';
+        hint.textContent = 'Required on the cloud portal because your login password is not kept on the server.';
+        passwordConfirmBtn.textContent = 'Register on Atomic Center';
+      } else {
+        title.textContent = 'Device password required';
+        subtitle.textContent =
+          'Enter your system password to install the MeshCentral agent on this device. Your login session is used for Atomic Center — no account password needed here.';
+        label.innerHTML = 'Device password (sudo) <span class="required-mark">*</span>';
+        document.getElementById('sudoPassword').placeholder = 'Your Linux/macOS login password';
+        hint.textContent = 'Used once to install the agent so this device appears in your Atomic Center group.';
+        passwordConfirmBtn.textContent = 'Install & Register';
+      }
       passwordModal.classList.remove('hidden');
       document.getElementById('sudoPassword').value = '';
       document.getElementById('sudoPassword').focus();
+    }
+
+    function needsCredentialsModal() {
+      if (!registerMeshCentral.checked) return false;
+      if (cloudPortal) return true;
+      return needsDevicePassword();
     }
 
     function needsDevicePassword() {
@@ -431,12 +480,13 @@
     function showProcessingOverlay() {
       processingOverlay.classList.remove('hidden');
       document.body.classList.add('processing-active');
+      const steps = cloudPortalSteps();
       let stepIndex = 0;
-      processingStep.textContent = processingSteps[0];
+      processingStep.textContent = steps[0];
       processingBar.style.width = '8%';
       stepTimer = setInterval(() => {
-        stepIndex = Math.min(stepIndex + 1, processingSteps.length - 1);
-        processingStep.textContent = processingSteps[stepIndex];
+        stepIndex = Math.min(stepIndex + 1, steps.length - 1);
+        processingStep.textContent = steps[stepIndex];
         processingBar.style.width = `${Math.min(8 + stepIndex * 18, 92)}%`;
       }, 8000);
     }
@@ -483,6 +533,7 @@
         const res = await fetch('/api/device/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify(buildPayload(credentials)),
           signal: controller.signal,
         });
@@ -501,6 +552,9 @@
           if (data.phases) showResult(data);
           const errMsg = data.error || 'Registration failed.';
           showAlert(errMsg);
+          if (data.requiresAtomicPassword) {
+            showPasswordModal();
+          }
           return;
         }
 
@@ -541,18 +595,22 @@
     passwordCancelBtn.addEventListener('click', hidePasswordModal);
 
     passwordConfirmBtn.addEventListener('click', async () => {
-      const sudoPassword = document.getElementById('sudoPassword').value;
-      if (!sudoPassword) {
-        showAlert('Please enter your device password (sudo).');
+      const passwordValue = document.getElementById('sudoPassword').value;
+      if (!passwordValue) {
+        showAlert(cloudPortal
+          ? 'Please enter your Atomo sign-in password.'
+          : 'Please enter your device password (sudo).');
         return;
       }
       hideAlert();
       passwordConfirmBtn.disabled = true;
       passwordConfirmBtn.textContent = 'Starting…';
       hidePasswordModal();
-      await submitRegistration({ sudoPassword });
+      await submitRegistration(cloudPortal
+        ? { atomicPassword: passwordValue }
+        : { sudoPassword: passwordValue });
       passwordConfirmBtn.disabled = false;
-      passwordConfirmBtn.textContent = 'Install & Register';
+      passwordConfirmBtn.textContent = cloudPortal ? 'Register on Atomic Center' : 'Install & Register';
       document.getElementById('sudoPassword').value = '';
     });
 
@@ -577,7 +635,7 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (registerMeshCentral.checked && needsDevicePassword()) {
+      if (needsCredentialsModal()) {
         showPasswordModal();
         return;
       }

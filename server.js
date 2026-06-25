@@ -588,6 +588,7 @@ app.get('/api/device/profile', (_req, res) => {
     deviceId: deviceBinding.getDeviceId(),
     deviceSerial: deviceBinding.getDeviceSerial(),
     meshcentralUrl,
+    cloudPortal: isServerlessRuntime(),
   });
 });
 
@@ -615,7 +616,11 @@ app.post('/api/device/register', async (req, res) => {
     registerMeshCentral,
     meshGroupName,
     sudoPassword,
+    atomicPassword: bodyAtomicPassword,
   } = req.body;
+
+  const serverless = isServerlessRuntime();
+  const atomicPassword = sessRecord.password || bodyAtomicPassword || null;
 
   const missing = [];
   if (!deviceName) missing.push('Device Name');
@@ -627,7 +632,12 @@ app.post('/api/device/register', async (req, res) => {
   if (!country) missing.push('Country');
   if (!city) missing.push('City');
   if (registerMeshCentral && !meshGroupName) missing.push('MeshCentral Device Group Name');
-  if (registerMeshCentral && canAutoInstall(operatingSystem) && !sudoPassword) {
+  if (
+    registerMeshCentral
+    && !serverless
+    && canAutoInstall(operatingSystem)
+    && !sudoPassword
+  ) {
     missing.push('Device password (sudo)');
   }
 
@@ -674,44 +684,37 @@ app.post('/api/device/register', async (req, res) => {
   try {
     const profile = deviceProfile.saveProfile(profilePayload);
 
-    let cloudSave = { ok: false };
-    if (await isAtomicCenterOnline()) {
-      cloudSave = await saveDeviceProfileToCloud({
-        userId: sessRecord.meshUserId,
-        username: sessRecord.username,
-        profilePayload,
-      });
-      if (cloudSave.ok) {
-        console.log('[API] Device profile saved to AWS database:', cloudSave.deviceRecordId);
-      } else {
-        console.warn('[API] AWS profile save failed:', cloudSave.error);
-      }
-    } else {
-      cloudSave = { ok: false, error: 'Atomic Center is offline. Profile saved locally only.' };
-    }
-
-    if (!cloudSave.ok) {
-      try {
-        const queued = cloudSync.enqueueDeviceProfile({
+    if (!registerMeshCentral) {
+      let cloudSave = { ok: false };
+      if (await isAtomicCenterOnline()) {
+        cloudSave = await saveDeviceProfileToCloud({
           userId: sessRecord.meshUserId,
           username: sessRecord.username,
           profilePayload,
-          reason: cloudSave.error || 'Cloud save failed',
         });
-        console.warn('[API] Queued device profile for AWS sync:', queued.id);
-      } catch (e) {
-        console.warn('[API] Failed to queue AWS sync:', e.message);
+        if (cloudSave.ok) {
+          console.log('[API] Device profile saved to AWS database:', cloudSave.deviceRecordId);
+        } else {
+          console.warn('[API] AWS profile save failed:', cloudSave.error);
+        }
+      } else {
+        cloudSave = { ok: false, error: 'Atomic Center is offline. Profile saved locally only.' };
       }
-    }
 
-    const cloudFields = {
-      sessionId: sessRecord.sessionId,
-      profileStoredOnCloud: cloudSave.ok,
-      deviceRecordId: cloudSave.deviceRecordId || null,
-      cloudSaveError: cloudSave.ok ? null : cloudSave.error,
-    };
+      if (!cloudSave.ok) {
+        try {
+          const queued = cloudSync.enqueueDeviceProfile({
+            userId: sessRecord.meshUserId,
+            username: sessRecord.username,
+            profilePayload,
+            reason: cloudSave.error || 'Cloud save failed',
+          });
+          console.warn('[API] Queued device profile for AWS sync:', queued.id);
+        } catch (e) {
+          console.warn('[API] Failed to queue AWS sync:', e.message);
+        }
+      }
 
-    if (!registerMeshCentral) {
       markOnboardingComplete(sessRecord, profilePayload.email);
       return res.json({
         success: true,
@@ -721,67 +724,86 @@ app.post('/api/device/register', async (req, res) => {
         profile,
         onboardingComplete: true,
         redirectTo: '/cluster-role',
-        ...cloudFields,
+        sessionId: sessRecord.sessionId,
+        profileStoredOnCloud: cloudSave.ok,
+        deviceRecordId: cloudSave.deviceRecordId || null,
+        cloudSaveError: cloudSave.ok ? null : cloudSave.error,
       });
     }
 
-    if (!sessRecord.password) {
-      return res.status(401).json({
-        error:
-          'Your details were saved, but the session expired. Sign in again to install the MeshCentral agent.',
+    if (!atomicPassword) {
+      return res.status(serverless ? 400 : 401).json({
+        error: serverless
+          ? 'Enter your Atomo sign-in password to register this device on Atomic Center.'
+          : 'Your details were saved, but the session expired. Sign in again to register on Atomic Center.',
         profile,
-        ...cloudFields,
+        requiresAtomicPassword: true,
+        cloudPortal: serverless,
+        sessionId: sessRecord.sessionId,
       });
     }
 
     try {
       const result = await runAtomicRegistration({
         username: sessRecord.username,
-        atomicPassword: sessRecord.password,
+        atomicPassword,
         userId: sessRecord.meshUserId,
         profilePayload,
         operatingSystem,
-        sudoPassword,
+        sudoPassword: serverless ? undefined : sudoPassword,
+        skipAgentInstall: serverless,
       });
 
       session.clearSessionPassword(sessRecord.sessionId);
-
       markOnboardingComplete(sessRecord, profilePayload.email);
+
+      const meshCloudOk = result.meshCentral?.profileStoredOnCloud === true;
 
       return res.json({
         success: true,
         partial: result.partial,
+        cloudPortal: serverless,
         message: result.message,
         profile,
         phases: result.phases,
-        meshCentral: {
-          ...result.meshCentral,
-          profileStoredOnCloud: result.meshCentral?.profileStoredOnCloud || cloudSave.ok,
-          deviceRecordId: result.meshCentral?.deviceRecordId || cloudSave.deviceRecordId || null,
-          cloudSaveError: result.meshCentral?.cloudSaveError || cloudSave.error || null,
-        },
+        meshCentral: result.meshCentral,
         agentInstall: result.agentInstall,
         onboardingComplete: true,
         redirectTo: '/cluster-role',
-        ...cloudFields,
+        sessionId: sessRecord.sessionId,
+        profileStoredOnCloud: meshCloudOk,
+        deviceRecordId: result.meshCentral?.deviceRecordId || null,
+        cloudSaveError: meshCloudOk ? null : result.meshCentral?.cloudSaveError || null,
       });
     } catch (e) {
       console.error('[API] Atomic Center registration failed:', e.message);
+      let cloudSave = { ok: false };
+      if (await isAtomicCenterOnline()) {
+        cloudSave = await saveDeviceProfileToCloud({
+          userId: sessRecord.meshUserId,
+          username: sessRecord.username,
+          profilePayload,
+        });
+      }
       if (cloudSave.ok) {
         markOnboardingComplete(sessRecord, profilePayload.email);
       }
       return res.status(cloudSave.ok ? 200 : 503).json({
         success: cloudSave.ok,
         partial: true,
+        cloudPortal: serverless,
         error: e.message,
         message: cloudSave.ok
-          ? 'Profile saved to AWS. MeshCentral agent setup failed — you can retry after signing in again.'
+          ? 'Profile saved to AWS. MeshCentral device group setup failed — retry registration or sign in again.'
           : e.message,
         profile,
         phases: e.phases || [],
         onboardingComplete: cloudSave.ok,
         redirectTo: cloudSave.ok ? '/cluster-role' : undefined,
-        ...cloudFields,
+        sessionId: sessRecord.sessionId,
+        profileStoredOnCloud: cloudSave.ok,
+        deviceRecordId: cloudSave.deviceRecordId || null,
+        cloudSaveError: cloudSave.ok ? null : cloudSave.error,
       });
     }
   } catch (e) {
