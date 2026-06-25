@@ -157,9 +157,36 @@ body.ov-body {
   position: relative;
 }
 
+/* Available tabs — Overview, Person, Face (and all tabs outside demo) */
+.ov-nav a:not([data-subscription-lock="true"]) {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
 .ov-nav a:hover {
   background: var(--color-surface-muted);
+}
+
+.ov-nav a:not([data-subscription-lock="true"]):hover {
   color: var(--color-text-primary);
+}
+
+/* Subscription-locked tabs in demo */
+.ov-nav a[data-subscription-lock="true"] {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  opacity: 0.72;
+}
+
+.ov-nav a[data-subscription-lock="true"]:hover {
+  background: var(--color-surface-muted);
+  opacity: 0.85;
+}
+
+body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  opacity: 1;
 }
 
 .ov-nav a.active {
@@ -4288,8 +4315,4 @@ body.ov-modal-open {
   margin: 0;
   color: var(--ov-muted);
   line-height: 1.6;
-}
-
-.ov-nav a[data-subscription-lock="true"] {
-  opacity: 0.72;
 }

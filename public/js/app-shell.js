@@ -227,6 +227,8 @@ async function initSubscriptionGate() {
     /* ignore */
   }
 
+  document.body.classList.toggle('demo-mode', demoMode);
+
   if (!demoMode) return;
 
   document.querySelectorAll('.ov-nav a[data-subscription-lock="true"]').forEach((link) => {
