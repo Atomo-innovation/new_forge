@@ -38,7 +38,18 @@ function updateSidebarUser(name) {
   if (userAvatar) userAvatar.textContent = display.charAt(0).toUpperCase();
 }
 
+function readCachedUsername() {
+  try {
+    return sessionStorage.getItem('atomoUsername') || '';
+  } catch {
+    return '';
+  }
+}
+
 async function loadSidebarUser() {
+  const cached = readCachedUsername();
+  if (cached) updateSidebarUser(cached);
+
   try {
     const url = window.AFSession ? window.AFSession.sessionUrl('/api/session') : sessionUrl('/api/session');
     const res = await fetch(url, { credentials: 'same-origin' });
@@ -47,6 +58,9 @@ async function loadSidebarUser() {
 
     if (data.sessionId) {
       sessionStorage.setItem('atomoSessionId', data.sessionId);
+    }
+    if (data.username) {
+      sessionStorage.setItem('atomoUsername', data.username);
     }
 
     updateSidebarUser(data.username);
@@ -104,6 +118,7 @@ async function initLogout() {
       });
     }
     sessionStorage.removeItem('atomoSessionId');
+    sessionStorage.removeItem('atomoUsername');
     window.location.href = '/login';
   });
 }

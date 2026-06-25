@@ -121,20 +121,14 @@
 
       if (!online && !cloudPortal) {
         disableSignupForm(
-          'You are offline. Account creation requires a connection to Atomic Center (AWS).',
-          'Connect to the internet, then try again.'
+          'You are offline. Account creation requires a connection to Atomic Center.',
+          ''
         );
         return;
       }
 
-      if (online) {
-        onlineBanner.textContent = 'Connected to Atomic Center. You can create a new account.';
-        onlineBanner.classList.remove('hidden');
-      } else {
-        onlineBanner.textContent = 'Checking Atomic Center connection… You can still try to create an account.';
-        onlineBanner.classList.remove('hidden');
-        onlineBanner.className = 'alert alert-error visible';
-      }
+      onlineBanner.classList.add('hidden');
+      onlineBanner.textContent = '';
 
       smtpReady = cfg.emailVerificationEnabled !== false;
       if (!smtpReady && online) {
@@ -146,9 +140,12 @@
       }
 
       if (cfg.bound && cfg.boundUser && !cloudPortal) {
-        signupHint.textContent = `Online — new accounts are created on Atomic Center. This device uses ${cfg.boundUser.username} for offline sign-in.`;
+        signupHint.classList.add('hidden');
       } else if (cloudPortal) {
-        signupHint.textContent = 'Create your Atomo Forge account on Atomic Center (AWS).';
+        signupHint.classList.add('hidden');
+      } else {
+        signupHint.classList.remove('hidden');
+        signupHint.textContent = 'Verify your email with a one-time code';
       }
     }
 
@@ -318,11 +315,8 @@
           sessionStorage.setItem('atomoSessionId', data.sessionId);
         }
 
-        showAlert(data.message, 'success');
         verifyBtn.textContent = 'Account Created!';
-        setTimeout(() => {
-          window.location.href = data.redirectTo || (data.onboardingComplete ? '/dashboard' : '/device-registration');
-        }, 2000);
+        window.location.href = data.redirectTo || (data.onboardingComplete ? '/dashboard' : '/device-registration');
       } catch {
         showAlert('Network error. Please try again.');
       } finally {

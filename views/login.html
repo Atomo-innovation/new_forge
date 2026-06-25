@@ -16,8 +16,6 @@
           <img src="/atomo.png" alt="Atomo" class="logo-img" width="72" height="67">
         </div>
         <!-- <p class="auth-eyebrow">Atomo Forge · <a href="https://atomo.in" target="_blank" rel="noopener noreferrer">atomo.in</a></p> -->
-        <h1>Welcome back</h1>
-        <p id="deviceHint">Sign in to your Atomo Forge account</p>
       </div>
 
       <div id="deviceBanner" class="alert alert-error hidden" role="status"></div>
@@ -66,13 +64,23 @@
     const verify2faBtn = document.getElementById('verify2faBtn');
     const backToLogin = document.getElementById('backToLogin');
     const deviceBanner = document.getElementById('deviceBanner');
-    const deviceHint = document.getElementById('deviceHint');
     const usernameInput = document.getElementById('username');
     const signupFooter = document.getElementById('signupFooter');
 
     let credentials = {};
 
     sessionStorage.removeItem('atomoSessionId');
+    sessionStorage.removeItem('atomoUsername');
+
+    function hideDeviceBanner() {
+      deviceBanner.textContent = '';
+      deviceBanner.className = 'alert alert-error hidden';
+    }
+
+    function showDeviceBanner(message, type = 'error') {
+      deviceBanner.textContent = message;
+      deviceBanner.className = `alert alert-${type} visible`;
+    }
 
     function setSignupLinkVisible(visible) {
       if (!signupFooter) return;
@@ -99,15 +107,7 @@
       const boundUser = data.boundUser?.username;
 
       if (cloudPortal) {
-        deviceHint.textContent = online
-          ? 'Sign in with your Atomo Forge account.'
-          : 'Checking connection to Atomic Center… You can still try to sign in.';
-        deviceBanner.textContent = online
-          ? 'Connected to Atomic Center (AWS).'
-          : (data.connectivityError
-            ? `Could not confirm Atomic Center yet: ${data.connectivityError}`
-            : 'Checking connection to Atomic Center…');
-        deviceBanner.className = online ? 'alert alert-success visible' : 'alert alert-error visible';
+        hideDeviceBanner();
         setUsernameLocked(false);
         setSignupLinkVisible(true);
         document.getElementById('forgotPasswordLink')?.classList.remove('hidden');
@@ -116,11 +116,7 @@
       }
 
       if (online) {
-        deviceHint.textContent = boundUser
-          ? `Online — connected to Atomic Center. Any account can sign in. Offline access is for ${boundUser}.`
-          : 'Online — connected to Atomic Center. Sign in with any Atomo Forge account.';
-        deviceBanner.textContent = 'Connected to Atomic Center (AWS). All registered users can sign in.';
-        deviceBanner.className = 'alert alert-success visible';
+        hideDeviceBanner();
         setUsernameLocked(false);
         setSignupLinkVisible(true);
         document.getElementById('forgotPasswordLink')?.classList.remove('hidden');
@@ -138,17 +134,14 @@
       if (data.bound && boundUser) {
         usernameInput.value = boundUser;
         setUsernameLocked(true);
-        deviceHint.textContent = `Offline — only ${boundUser} can sign in on this device.`;
-        deviceBanner.textContent = `No connection to Atomic Center. Only ${boundUser} can sign in (saved on this device).`;
-        deviceBanner.className = 'alert alert-error visible';
+        showDeviceBanner(`No connection to Atomic Center. Only ${boundUser} can sign in (saved on this device).`);
         loginBtn.disabled = false;
         return;
       }
 
-      deviceHint.textContent = 'Offline — no registered user on this device. Connect to the internet to sign in.';
-      deviceBanner.textContent =
-        'Atomic Center is unreachable and this device has no saved user. Sign in once while online to enable offline access.';
-      deviceBanner.className = 'alert alert-error visible';
+      showDeviceBanner(
+        'Atomic Center is unreachable and this device has no saved user. Sign in once while online to enable offline access.'
+      );
       loginBtn.disabled = true;
     }
 
@@ -165,7 +158,7 @@
         if (window.__AF_LOGIN_BOOT__?.cloudPortal) {
           applyDeviceStatus({ ...window.__AF_LOGIN_BOOT__, online: false });
         } else if (!window.__AF_LOGIN_BOOT__) {
-          deviceHint.textContent = 'Could not load device status. You can still try to sign in.';
+          hideDeviceBanner();
           loginBtn.disabled = false;
         }
       }
@@ -223,14 +216,13 @@
       if (data.sessionId) {
         sessionStorage.setItem('atomoSessionId', data.sessionId);
       }
+      if (data.username) {
+        sessionStorage.setItem('atomoUsername', data.username);
+      }
 
-      showAlert(data.message, 'success');
       loginBtn.disabled = true;
       verify2faBtn.disabled = true;
-
-      setTimeout(() => {
-        window.location.href = data.redirectTo || '/overview';
-      }, 800);
+      window.location.href = data.redirectTo || '/overview';
     }
 
     loginForm.addEventListener('submit', async (e) => {

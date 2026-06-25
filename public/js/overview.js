@@ -703,6 +703,7 @@ async function loadOverview() {
   if (!session) return;
 
   if (session.username) {
+    sessionStorage.setItem('atomoUsername', session.username);
     window.updateSidebarUser?.(session.username);
   }
 
@@ -712,7 +713,7 @@ async function loadOverview() {
   if (res.ok) {
     basePayload = await res.json();
     uptimeBaseSecs = basePayload.health?.uptimeBaseSecs || 1234567;
-    window.updateSidebarUser?.(session.username || basePayload.username);
+    window.updateSidebarUser?.(session.username);
     document.getElementById('breadcrumb').textContent = `${basePayload.device?.hostname || 'Electron'} · ${(basePayload.deviceRole?.clusterMode || 'master').toUpperCase()} · ${basePayload.sync?.atomicCentreHost || 'atomic-centre.atomo.io'}`;
     if (basePayload.health?.temperatureC) {
       tempHistory = Array(10).fill(basePayload.health.temperatureC);

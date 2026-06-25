@@ -367,7 +367,15 @@ function resolveSession(req) {
     const sess = session.getSessionRecord(sessionId);
     if (sess) return sess;
   }
-  return null;
+
+  return session.getCurrentSessionRecord();
+}
+
+function clearPriorAuthSession(req, res) {
+  const signed = sessionCookie.getSignedSessionFromRequest(req);
+  const sessionId = sessionCookie.getSessionIdFromRequest(req) || signed?.sessionId;
+  if (sessionId) session.destroySession(sessionId);
+  sessionCookie.clearSessionCookies(res);
 }
 
 function attachSessionCookie(res, payload) {
@@ -1119,6 +1127,7 @@ app.post('/api/signup/verify-2fa', async (req, res) => {
 
     if (result.status >= 200 && result.status < 300 && result.data.success) {
       try {
+        clearPriorAuthSession(req, res);
         const bindResult = await completeSignupBind({
           username: pending.username,
           email: pending.email,
@@ -1256,6 +1265,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
+    clearPriorAuthSession(req, res);
     const result = await authLogin(username, password);
     attachSessionCookie(res, result);
     return sendProxy(res, result);
