@@ -18,8 +18,11 @@ function applyLiveMetricsFromPayload(source) {
     ? (source.faceMetrics || null)
     : (source.peopleMetrics || null);
   if (!m) return;
-  document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = m.current ?? 0; });
-  document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = m.peakToday ?? 0; });
+  const demo = source.demoMode === true || document.body.classList.contains('demo-mode');
+  const current = demo && (m.current == null || m.current < 3) ? 3 : (m.current ?? 0);
+  const peak = demo && (m.peakToday == null || m.peakToday < 5) ? 5 : (m.peakToday ?? 0);
+  document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = current; });
+  document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = peak; });
   document.querySelectorAll('[data-m="fps"]').forEach((el) => {
     el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—';
   });
@@ -597,13 +600,18 @@ function renderModelCard() {
 
 function refreshPersonLiveSections() {
   if (!payload || !isLiveTab) return;
+  const demo = payload.demoMode === true || document.body.classList.contains('demo-mode');
   const m = isFaceTab ? (payload.faceMetrics || {}) : (payload.peopleMetrics || {});
   const r = payload.report || {};
   const running = payload.state?.inferenceRunning;
 
   const vals = document.querySelectorAll('.ov-det-metrics-strip .ov-det-metric-val');
-  if (vals[0]) vals[0].textContent = String(m.current ?? 0);
-  if (vals[1]) vals[1].textContent = String(r.peakPeopleToday ?? m.peakToday ?? 0);
+  const current = demo && (m.current == null || m.current < 3) ? 3 : (m.current ?? 0);
+  const peak = demo && (r.peakPeopleToday == null && (m.peakToday == null || m.peakToday < 5))
+    ? 5
+    : (r.peakPeopleToday ?? m.peakToday ?? 0);
+  if (vals[0]) vals[0].textContent = String(current);
+  if (vals[1]) vals[1].textContent = String(peak);
   if (vals[2]) vals[2].textContent = String(r.eventsToday ?? 0);
   if (vals[3]) vals[3].textContent = isFaceTab
     ? (m.recognitionActive ? 'Active' : 'None')

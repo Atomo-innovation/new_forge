@@ -8,6 +8,22 @@
     const isLiveTab = isPersonTab || isFaceTab;
     if (!isLiveTab) return;
 
+    const DEMO_PEAK_COUNT = 5;
+    const DEMO_MIN_COUNT = 3;
+
+    function isDemoLive() {
+      return frameData?.demoMode === true || payload?.demoMode === true
+        || document.body.classList.contains('demo-mode');
+    }
+
+    function clampDemoMetrics(m) {
+      if (!isDemoLive()) return m;
+      const out = { ...m };
+      if (out.current == null || out.current < DEMO_MIN_COUNT) out.current = DEMO_MIN_COUNT;
+      if (out.peakToday == null || out.peakToday < DEMO_PEAK_COUNT) out.peakToday = DEMO_PEAK_COUNT;
+      return out;
+    }
+
     function liveApiPath(action) {
       return `/api/detection/${slug}/live/${encodeURIComponent(selectedCameraId)}/${action}`;
     }
@@ -162,7 +178,9 @@
       const cam = frameData?.camera || payload.assignedCameras?.find((c) => c.id === selectedCameraId)
         || { name: 'Camera', status: 'online' };
       const state = payload.state || {};
-      const m = frameData?.metrics || (isFaceTab ? payload?.faceMetrics : payload?.peopleMetrics) || {};
+      const m = clampDemoMetrics(
+        frameData?.metrics || (isFaceTab ? payload?.faceMetrics : payload?.peopleMetrics) || {}
+      );
       const pct = Math.round((state.confidence ?? 0.7) * 100);
       const filterOn = Boolean(state.features?.filterSmallObjects);
       const tooManyOn = Boolean(state.alerts?.['too-many-people']);
@@ -350,7 +368,7 @@
 
     function updateStatsOnly() {
       if (!frameData?.metrics) return;
-      const m = frameData.metrics;
+      const m = clampDemoMetrics({ ...frameData.metrics });
       const map = {
         current: m.current ?? 0,
         peak: m.peakToday ?? 0,
@@ -428,6 +446,9 @@
             : { presenceActive: detections.length > 0 }),
         },
       };
+      if (isDemoLive() && frameData.metrics.current < DEMO_MIN_COUNT) {
+        frameData.metrics.current = DEMO_MIN_COUNT;
+      }
       updateStatsOnly();
     }
 
@@ -1132,7 +1153,12 @@
     function startPolling() {
       stopPolling();
       pollFrame();
-      const ms = inferenceRunning ? (detWs ? 2000 : 1000) : 2500;
+      const demo = isDemoLive();
+      const ms = demo
+        ? 300
+        : inferenceRunning
+          ? (detWs ? 2000 : 1000)
+          : 2500;
       pollTimer = setInterval(pollFrame, ms);
     }
 
@@ -1178,6 +1204,9 @@
         payload = selectData.payload || payload;
         if (selectData.preview) {
           frameData = { ...(frameData || {}), preview: selectData.preview, camera: selectData.camera };
+        }
+        if (selectData.demoMode) {
+          frameData = { ...(frameData || {}), demoMode: true };
         }
         if (selectData.demoMode || selectData.payload?.state?.inferenceRunning) {
           inferenceRunning = true;
