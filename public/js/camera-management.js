@@ -112,12 +112,17 @@ function renderSources() {
   ).join('');
 }
 
+function isDetectionLiveTab() {
+  const slug = document.body.dataset.detectionSlug;
+  return slug === 'person' || slug === 'fire-smoke';
+}
+
 function renderCameraTile(cam) {
   const online = cam.status === 'online';
-  const isPersonTab = document.body.dataset.detectionSlug === 'person';
-  const selected = isPersonTab && window.PersonLive?.getSelectedCameraId?.() === cam.id;
+  const liveTab = isDetectionLiveTab();
+  const selected = liveTab && window.PersonLive?.getSelectedCameraId?.() === cam.id;
   return `
-    <article class="ov-cam-tile ov-cam-tile-clickable ${selected ? 'is-selected' : ''}" data-id="${cam.id}" data-action="open-view" tabindex="0" role="button" aria-label="${isPersonTab ? 'Select' : 'Open live view for'} ${esc(cam.name)}">
+    <article class="ov-cam-tile ov-cam-tile-clickable ${selected ? 'is-selected' : ''}" data-id="${cam.id}" data-action="open-view" tabindex="0" role="button" aria-label="${liveTab ? 'Select' : 'Open live view for'} ${esc(cam.name)}">
       <div class="ov-cam-tile-head">
         <span class="ov-cam-tile-icon" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
@@ -133,7 +138,7 @@ function renderCameraTile(cam) {
         <span>${esc(cam.location || 'No location')}</span>
         <span class="ov-mono">${esc(cam.resolution || '—')} · ${cam.fpsLimit || '—'} fps</span>
       </div>
-      <span class="ov-cam-tile-hint">${document.body.dataset.detectionSlug === 'person' ? 'Select for detection' : 'Open live view'}</span>
+      <span class="ov-cam-tile-hint">${liveTab ? 'Select for detection' : 'Open live view'}</span>
     </article>`;
 }
 
@@ -326,7 +331,7 @@ function renderModal() {
 }
 
 function navigateToCamera(id) {
-  if (document.body.dataset.detectionSlug === 'person' && window.PersonLive?.selectCamera) {
+  if (isDetectionLiveTab() && window.PersonLive?.selectCamera) {
     window.PersonLive.selectCamera(id);
     return;
   }

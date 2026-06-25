@@ -155,17 +155,104 @@ function initMobileNav() {
   });
 }
 
+const SUBSCRIPTION_TITLE = 'Subscription required';
+const SUBSCRIPTION_MESSAGE =
+  'This feature is included with an active Atomo Forge subscription. Upgrade your plan to unlock Face, Safety, AI Models, Settings, and more.';
+
+const NAV_LABELS = {
+  face: 'Face Recognition',
+  safety: 'Safety & PPE',
+  'ai-models': 'AI Models',
+  settings: 'Settings',
+};
+
+function ensureSubscriptionModal() {
+  if (document.getElementById('subscriptionModal')) return;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'subscriptionModal';
+  wrap.className = 'ov-modal';
+  wrap.hidden = true;
+  wrap.innerHTML = `
+    <div class="ov-modal-backdrop" data-action="close-subscription"></div>
+    <div class="ov-modal-dialog ov-subscription-dialog" role="dialog" aria-modal="true" aria-labelledby="subscriptionModalTitle">
+      <div class="ov-modal-head">
+        <h2 class="ov-modal-title" id="subscriptionModalTitle">${SUBSCRIPTION_TITLE}</h2>
+        <button type="button" class="ov-modal-close" data-action="close-subscription" aria-label="Close">&times;</button>
+      </div>
+      <div class="ov-modal-body">
+        <p id="subscriptionModalMessage">${SUBSCRIPTION_MESSAGE}</p>
+      </div>
+      <div class="ov-modal-foot">
+        <a href="/detection/person" class="ov-quick-btn">Try Person detection</a>
+        <a href="/detection/fire-smoke" class="ov-quick-btn">Try Fire &amp; Smoke</a>
+        <button type="button" class="ov-cam-add-btn" data-action="close-subscription">Got it</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  wrap.querySelectorAll('[data-action="close-subscription"]').forEach((el) => {
+    el.addEventListener('click', closeSubscriptionModal);
+  });
+}
+
+function showSubscriptionModal(featureLabel) {
+  ensureSubscriptionModal();
+  const modal = document.getElementById('subscriptionModal');
+  const msg = document.getElementById('subscriptionModalMessage');
+  if (msg) {
+    msg.textContent = featureLabel
+      ? `${featureLabel} is included with an active Atomo Forge subscription. Upgrade your plan to unlock Face, Safety, AI Models, Settings, and more.`
+      : SUBSCRIPTION_MESSAGE;
+  }
+  modal.hidden = false;
+  document.body.classList.add('ov-modal-open');
+}
+
+function closeSubscriptionModal() {
+  const modal = document.getElementById('subscriptionModal');
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove('ov-modal-open');
+}
+
+async function initSubscriptionGate() {
+  let demoMode = false;
+  try {
+    const url = window.AFSession ? window.AFSession.sessionUrl('/api/session') : sessionUrl('/api/session');
+    const res = await fetch(url, { credentials: 'same-origin' });
+    const data = await res.json();
+    demoMode = data.demoMode === true;
+  } catch {
+    /* ignore */
+  }
+
+  if (!demoMode) return;
+
+  document.querySelectorAll('.ov-nav a[data-subscription-lock="true"]').forEach((link) => {
+    if (link.dataset.subscriptionBound === 'true') return;
+    link.dataset.subscriptionBound = 'true';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      showSubscriptionModal(NAV_LABELS[link.dataset.navId] || 'This feature');
+    });
+  });
+}
+
 function initAppShell() {
   setActiveNav();
   loadSidebarUser();
   initTheme();
   initLogout();
   initMobileNav();
+  initSubscriptionGate();
   if (window.LiveMetrics && document.getElementById('liveMetricsStrip')) {
     window.LiveMetrics.init();
   }
   window.addEventListener('hashchange', setActiveNav);
 }
+
+window.showSubscriptionModal = showSubscriptionModal;
 
 window.updateSidebarUser = updateSidebarUser;
 

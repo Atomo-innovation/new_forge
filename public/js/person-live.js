@@ -3,7 +3,13 @@
    */
   (function () {
     const slug = document.body.dataset.detectionSlug;
-    if (slug !== 'person') return;
+    const isLiveTab = slug === 'person' || slug === 'fire-smoke';
+    const isFireSmokeTab = slug === 'fire-smoke';
+    if (!isLiveTab) return;
+
+    function liveApiPath(action) {
+      return `/api/detection/${slug}/live/${encodeURIComponent(selectedCameraId)}/${action}`;
+    }
 
     let selectedCameraId = null;
     let payload = null;
@@ -101,7 +107,7 @@
           <div class="ov-plive-empty-inner">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
             <h2>Select a camera</h2>
-            <p>Click <strong>North Gate</strong> or any camera above to open the live person detection view here.</p>
+            <p>Click any assigned camera above to open the live ${isFireSmokeTab ? 'fire &amp; smoke' : 'person'} detection view here.</p>
           </div>
         </article>`;
     }
@@ -155,7 +161,7 @@
       const cam = frameData?.camera || payload.assignedCameras?.find((c) => c.id === selectedCameraId)
         || { name: 'Camera', status: 'online' };
       const state = payload.state || {};
-      const m = frameData?.metrics || payload.peopleMetrics || {};
+      const m = frameData?.metrics || (isFireSmokeTab ? payload?.fireSmokeMetrics : payload?.peopleMetrics) || {};
       const pct = Math.round((state.confidence ?? 0.7) * 100);
       const filterOn = Boolean(state.features?.filterSmallObjects);
       const tooManyOn = Boolean(state.alerts?.['too-many-people']);
@@ -168,6 +174,16 @@
           ? (frameData?.workerSource === 'npu' ? 'Live AI (NPU)' : frameData?.workerSource === 'local-cpu' ? 'Live AI (CPU)' : 'Live AI')
           : 'Worker offline'
         : 'Preview';
+
+      const featureOptions = payload?.tab?.featureOptions || [];
+      const showFeatures = featureOptions.length > 0;
+      const showMinSize = !isFireSmokeTab && filterOn;
+      const showMaxPeople = !isFireSmokeTab && tooManyOn;
+      const countLabel = isFireSmokeTab ? 'Alerts' : 'People';
+      const statusLabel = isFireSmokeTab ? 'Alert' : 'Presence';
+      const statusVal = isFireSmokeTab
+        ? (m.alertsActive ? 'Active' : 'None')
+        : (m.presenceActive ? 'Active' : 'None');
 
       return `
         <article class="ov-card ov-plive-workbench" id="personWorkbench">
@@ -190,15 +206,15 @@
             </div>
 
             <div class="ov-plive-stats" id="pliveStats">
-              <div class="ov-plive-stat"><span class="ov-plive-stat-val" data-m="current">${m.current ?? 0}</span><span class="ov-plive-stat-lbl">People</span></div>
+              <div class="ov-plive-stat"><span class="ov-plive-stat-val" data-m="current">${m.current ?? 0}</span><span class="ov-plive-stat-lbl">${countLabel}</span></div>
               <div class="ov-plive-stat"><span class="ov-plive-stat-val" data-m="peak">${m.peakToday ?? 0}</span><span class="ov-plive-stat-lbl">Peak</span></div>
               <div class="ov-plive-stat"><span class="ov-plive-stat-val" data-m="fps">${m.fps != null ? Number(m.fps).toFixed(1) : '—'}</span><span class="ov-plive-stat-lbl">FPS</span></div>
               <div class="ov-plive-stat"><span class="ov-plive-stat-val" data-m="inf">${m.inferenceMs != null ? Math.round(m.inferenceMs) + 'ms' : '—'}</span><span class="ov-plive-stat-lbl">Inference</span></div>
-              <div class="ov-plive-stat"><span class="ov-plive-stat-val ov-plive-stat-sm" data-m="presence">${m.presenceActive ? 'Active' : 'None'}</span><span class="ov-plive-stat-lbl">Presence</span></div>
+              <div class="ov-plive-stat"><span class="ov-plive-stat-val ov-plive-stat-sm" data-m="presence">${statusVal}</span><span class="ov-plive-stat-lbl">${statusLabel}</span></div>
             </div>
 
             <div class="ov-plive-toolbar">
-              <div class="ov-plive-toolbar-row">
+              <div class="ov-plive-toolbar-row ${showFeatures ? '' : 'is-hidden'}">
                 <span class="ov-plive-toolbar-label">Features</span>
                 <div class="ov-plive-chips">${renderFeatureChips()}</div>
               </div>
@@ -208,7 +224,7 @@
                 <span class="ov-det-slider-val" id="pliveConfVal">${pct}%</span>
                 <span class="ov-plive-conf-hint" id="pliveConfHint">${confidenceHint(pct)}</span>
               </div>
-              <div class="ov-plive-toolbar-row ${filterOn ? '' : 'is-hidden'}" id="pliveMinSizeRow">
+              <div class="ov-plive-toolbar-row ${showMinSize ? '' : 'is-hidden'}" id="pliveMinSizeRow">
                 <span class="ov-plive-toolbar-label">Min size</span>
                 <input type="range" class="ov-det-range" id="pliveMinSizeRange" min="16" max="160" step="4" value="${state.minObjectSizePx ?? 48}">
                 <span class="ov-det-slider-val" id="pliveMinSizeVal">${state.minObjectSizePx ?? 48}px</span>
@@ -217,7 +233,7 @@
                 <span class="ov-plive-toolbar-label">Alerts</span>
                 <div class="ov-plive-alert-chips">${renderAlertChips()}</div>
               </div>
-              <div class="ov-plive-toolbar-row ${tooManyOn ? '' : 'is-hidden'}" id="pliveMaxPeopleRow">
+              <div class="ov-plive-toolbar-row ${showMaxPeople ? '' : 'is-hidden'}" id="pliveMaxPeopleRow">
                 <span class="ov-plive-toolbar-label">Max people</span>
                 <input type="number" class="ov-det-input ov-det-max-people-input" id="pliveMaxPeople" min="1" max="99" value="${state.maxPeopleAlert ?? 10}">
               </div>
@@ -334,7 +350,9 @@
         peak: m.peakToday ?? 0,
         fps: m.fps != null ? Number(m.fps).toFixed(1) : '—',
         inf: m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—',
-        presence: m.presenceActive ? 'Active' : 'None',
+        presence: isFireSmokeTab
+          ? (m.alertsActive ? 'Active' : 'None')
+          : (m.presenceActive ? 'Active' : 'None'),
       };
       Object.entries(map).forEach(([key, val]) => {
         const el = document.querySelector(`[data-m="${key}"]`);
@@ -396,7 +414,9 @@
         metrics: {
           ...(frameData?.metrics || {}),
           current: detections.length,
-          presenceActive: detections.length > 0,
+          ...(isFireSmokeTab
+            ? { alertsActive: detections.length > 0 }
+            : { presenceActive: detections.length > 0 }),
         },
       };
       drawBoxesOverlay();
@@ -484,7 +504,7 @@
     async function saveConfig(patch) {
       if (!selectedCameraId) return;
       try {
-        const res = await fetch(sessionUrl(`/api/detection/person/live/${encodeURIComponent(selectedCameraId)}/config`), {
+        const res = await fetch(sessionUrl(liveApiPath('config')), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(patch),
@@ -560,7 +580,7 @@
       const start = !inferenceRunning;
       const path = start ? 'start' : 'stop';
       try {
-        const res = await fetch(sessionUrl(`/api/detection/person/live/${encodeURIComponent(selectedCameraId)}/${path}`), {
+        const res = await fetch(sessionUrl(liveApiPath(path)), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -613,7 +633,9 @@
       if (note) {
         if (data?.backendError) note.textContent = data.backendError;
         else if (data?.backendConnected) {
-          if (data.workerSource === 'npu') {
+          if (isFireSmokeTab) {
+            note.textContent = 'Connected to vision backend — real-time fire & smoke inference active.';
+          } else if (data.workerSource === 'npu') {
             note.textContent = 'Khadas NPU person detection active (YOLO26s).';
           } else if (data.workerSource === 'local-cpu') {
             note.textContent = 'CPU dev fallback active. On Khadas use NPU backend only.';
@@ -734,12 +756,20 @@
         const y2 = box[3] * h;
         const score = Math.round((det.score || 0) * 100);
         const tid = det.track_id != null ? `#${det.track_id}` : '';
-        ctx.strokeStyle = '#22c55e';
+        const detLabel = det.label ? String(det.label) : '';
+        const boxColor = isFireSmokeTab
+          ? (detLabel === 'fire' ? '#ef4444' : '#f97316')
+          : '#22c55e';
+        ctx.strokeStyle = boxColor;
         ctx.lineWidth = 2;
         ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        const label = tid ? `Person ${tid} ${score}%` : `Person ${score}%`;
+        const label = isFireSmokeTab
+          ? `${detLabel ? detLabel.charAt(0).toUpperCase() + detLabel.slice(1) : 'Alert'} ${score}%`
+          : (tid ? `Person ${tid} ${score}%` : `Person ${score}%`);
         const lw = Math.max(72, label.length * 7);
-        ctx.fillStyle = 'rgba(34, 197, 94, 0.85)';
+        ctx.fillStyle = isFireSmokeTab
+          ? (detLabel === 'fire' ? 'rgba(239, 68, 68, 0.85)' : 'rgba(249, 115, 22, 0.85)')
+          : 'rgba(34, 197, 94, 0.85)';
         ctx.fillRect(x1, y1 - 20, lw, 20);
         ctx.fillStyle = '#fff';
         ctx.font = '600 11px Inter, sans-serif';
@@ -755,7 +785,7 @@
         streamResyncAttempts += 1;
         try {
           const res = await fetch(
-            sessionUrl(`/api/detection/person/live/${encodeURIComponent(selectedCameraId)}/resync`),
+            sessionUrl(liveApiPath('resync')),
             { method: 'POST' }
           );
           const data = await res.json();
@@ -1010,7 +1040,7 @@
     async function pollFrame() {
       if (!selectedCameraId) return;
       try {
-        const res = await fetch(sessionUrl(`/api/detection/person/live/${encodeURIComponent(selectedCameraId)}/frame`));
+        const res = await fetch(sessionUrl(liveApiPath('frame')));
         if (!res.ok) return;
         frameData = await res.json();
         inferenceRunning = Boolean(frameData.inferenceRunning);
@@ -1089,7 +1119,7 @@
 
       try {
         setLoadingStatus('Syncing camera with backend…');
-        const res = await fetch(sessionUrl(`/api/detection/person/live/${encodeURIComponent(cameraId)}/select`), {
+        const res = await fetch(sessionUrl(`/api/detection/${slug}/live/${encodeURIComponent(cameraId)}/select`), {
           method: 'POST',
         });
         const data = await res.json();
@@ -1149,7 +1179,7 @@
 
     async function ensureDemoDetection(cameraId) {
       try {
-        const res = await fetch(sessionUrl(`/api/detection/person/live/${encodeURIComponent(cameraId)}/start`), {
+        const res = await fetch(sessionUrl(`/api/detection/${slug}/live/${encodeURIComponent(cameraId)}/start`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });

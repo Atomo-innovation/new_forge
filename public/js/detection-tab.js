@@ -7,6 +7,8 @@ let personSaveTimer = null;
 let dashEventWs = null;
 let dashWsConnected = false;
 
+const isLiveTab = slug === 'person' || slug === 'fire-smoke';
+const isFireSmokeTab = slug === 'fire-smoke';
 const isPersonTab = slug === 'person';
 
 function sessionUrl(path) {
@@ -557,14 +559,14 @@ function renderModelCard() {
 
   root.innerHTML = renderEventsCard();
 
-  if (!isPersonTab) wireModelEvents();
+  if (!isLiveTab) wireModelEvents();
   wireGalleryEvents();
   updateEventCountLabel();
 }
 
 function refreshPersonLiveSections() {
-  if (!payload || !isPersonTab) return;
-  const m = payload.peopleMetrics || {};
+  if (!payload || !isLiveTab) return;
+  const m = isFireSmokeTab ? (payload.fireSmokeMetrics || {}) : (payload.peopleMetrics || {});
   const r = payload.report || {};
   const running = payload.state?.inferenceRunning;
 
@@ -572,7 +574,9 @@ function refreshPersonLiveSections() {
   if (vals[0]) vals[0].textContent = String(m.current ?? 0);
   if (vals[1]) vals[1].textContent = String(r.peakPeopleToday ?? m.peakToday ?? 0);
   if (vals[2]) vals[2].textContent = String(r.eventsToday ?? 0);
-  if (vals[3]) vals[3].textContent = m.presenceActive ? 'Active' : 'None';
+  if (vals[3]) vals[3].textContent = isFireSmokeTab
+    ? (m.alertsActive ? 'Active' : 'None')
+    : (m.presenceActive ? 'Active' : 'None');
 
   const statusWrap = document.querySelector('.ov-det-model-status-wrap');
   if (statusWrap) {
@@ -860,7 +864,7 @@ async function loadDetectionTab() {
     const crumb = document.getElementById('detectionBreadcrumb');
     if (title) title.textContent = payload.tab.pageTitle;
     if (crumb) crumb.textContent = `AI detection · ${payload.tab.title}`;
-    if (isPersonTab && window.PersonLive?.initFromPayload) {
+    if (isLiveTab && window.PersonLive?.initFromPayload) {
       await window.PersonLive.initFromPayload(payload);
     }
     renderModelCard();
@@ -906,11 +910,11 @@ function refreshEventsOnly(nextPayload) {
 }
 
 function connectDashEventWs() {
-  if (!isPersonTab || dashEventWs) return;
+  if (!isLiveTab || dashEventWs) return;
   try {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const sid = sessionStorage.getItem('atomoSessionId');
-    const q = sid ? `?slug=person&sessionId=${encodeURIComponent(sid)}` : '?slug=person';
+    const q = sid ? `?slug=${encodeURIComponent(slug)}&sessionId=${encodeURIComponent(sid)}` : `?slug=${encodeURIComponent(slug)}`;
     dashEventWs = new WebSocket(`${proto}//${window.location.host}/ws/detection${q}`);
     dashEventWs.onopen = () => {
       dashWsConnected = true;
@@ -921,13 +925,21 @@ function connectDashEventWs() {
         if (msg.type !== 'person_update') return;
         if (msg.newEvents?.length) prependEvents(msg.newEvents, msg.payload);
         else if (msg.payload) refreshEventsOnly(msg.payload);
-        if (msg.payload?.peopleMetrics && window.PersonLive) {
+        if (msg.payload?.peopleMetrics && window.PersonLive && isPersonTab) {
           const m = msg.payload.peopleMetrics;
           document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = m.current ?? 0; });
           document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = m.peakToday ?? 0; });
           document.querySelectorAll('[data-m="fps"]').forEach((el) => { el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—'; });
           document.querySelectorAll('[data-m="inf"]').forEach((el) => { el.textContent = m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—'; });
           document.querySelectorAll('[data-m="presence"]').forEach((el) => { el.textContent = m.presenceActive ? 'Active' : 'None'; });
+        }
+        if (msg.payload?.fireSmokeMetrics && window.PersonLive && isFireSmokeTab) {
+          const m = msg.payload.fireSmokeMetrics;
+          document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = m.current ?? 0; });
+          document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = m.peakToday ?? 0; });
+          document.querySelectorAll('[data-m="fps"]').forEach((el) => { el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—'; });
+          document.querySelectorAll('[data-m="inf"]').forEach((el) => { el.textContent = m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—'; });
+          document.querySelectorAll('[data-m="presence"]').forEach((el) => { el.textContent = m.alertsActive ? 'Active' : 'None'; });
         }
       } catch {
         /* ignore */
@@ -950,7 +962,7 @@ function startRefresh() {
   connectDashEventWs();
   refreshTimer = setInterval(async () => {
     if (!slug || document.hidden) return;
-    if (isPersonTab && dashWsConnected) return;
+    if (isLiveTab && dashWsConnected) return;
     try {
       const res = await fetch(sessionUrl(`/api/detection/${slug}`));
       if (!res.ok) return;
@@ -958,7 +970,7 @@ function startRefresh() {
       payload = next;
       const search = document.getElementById('detEventSearch');
       if (search) eventSearchQuery = search.value;
-      if (isPersonTab && document.getElementById('personWorkbench')) {
+      if (isLiveTab && document.getElementById('personWorkbench')) {
         if (window.PersonLive?.refresh) window.PersonLive.refresh();
       } else {
         refreshEventsGallery();
@@ -966,7 +978,7 @@ function startRefresh() {
     } catch {
       /* ignore */
     }
-  }, isPersonTab ? 30000 : 8000);
+  }, isLiveTab ? 30000 : 8000);
 }
 
 if (document.readyState === 'loading') {
