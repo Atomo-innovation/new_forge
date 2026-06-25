@@ -6,9 +6,35 @@ let eventSearchQuery = '';
 let personSaveTimer = null;
 let dashEventWs = null;
 let dashWsConnected = false;
+let lastEventsFingerprint = '';
 
-const isLiveTab = slug === 'person' || slug === 'fire-smoke';
-const isFireSmokeTab = slug === 'fire-smoke';
+function eventsFingerprint(events) {
+  return (events || []).map((e) => e.id).join('|');
+}
+
+function applyLiveMetricsFromPayload(source) {
+  if (!source) return;
+  const m = isFaceTab
+    ? (source.faceMetrics || null)
+    : (source.peopleMetrics || null);
+  if (!m) return;
+  document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = m.current ?? 0; });
+  document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = m.peakToday ?? 0; });
+  document.querySelectorAll('[data-m="fps"]').forEach((el) => {
+    el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—';
+  });
+  document.querySelectorAll('[data-m="inf"]').forEach((el) => {
+    el.textContent = m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—';
+  });
+  document.querySelectorAll('[data-m="presence"]').forEach((el) => {
+    el.textContent = isFaceTab
+      ? (m.recognitionActive ? 'Active' : 'None')
+      : (m.presenceActive ? 'Active' : 'None');
+  });
+}
+
+const isLiveTab = slug === 'person' || slug === 'face';
+const isFaceTab = slug === 'face';
 const isPersonTab = slug === 'person';
 
 function sessionUrl(path) {
@@ -414,9 +440,14 @@ function renderEventsSearchBar() {
     </label>`;
 }
 
-function refreshEventsGallery() {
+function refreshEventsGallery(force = false) {
   const host = document.getElementById('detEventsGalleryHost');
-  if (host) host.innerHTML = renderEventCards(getFilteredEvents());
+  if (!host) return;
+  const events = getFilteredEvents();
+  const fp = eventsFingerprint(events);
+  if (!force && fp === lastEventsFingerprint) return;
+  lastEventsFingerprint = fp;
+  host.innerHTML = renderEventCards(events);
   updateEventCountLabel();
   wireGalleryEvents();
 }
@@ -566,7 +597,7 @@ function renderModelCard() {
 
 function refreshPersonLiveSections() {
   if (!payload || !isLiveTab) return;
-  const m = isFireSmokeTab ? (payload.fireSmokeMetrics || {}) : (payload.peopleMetrics || {});
+  const m = isFaceTab ? (payload.faceMetrics || {}) : (payload.peopleMetrics || {});
   const r = payload.report || {};
   const running = payload.state?.inferenceRunning;
 
@@ -574,8 +605,8 @@ function refreshPersonLiveSections() {
   if (vals[0]) vals[0].textContent = String(m.current ?? 0);
   if (vals[1]) vals[1].textContent = String(r.peakPeopleToday ?? m.peakToday ?? 0);
   if (vals[2]) vals[2].textContent = String(r.eventsToday ?? 0);
-  if (vals[3]) vals[3].textContent = isFireSmokeTab
-    ? (m.alertsActive ? 'Active' : 'None')
+  if (vals[3]) vals[3].textContent = isFaceTab
+    ? (m.recognitionActive ? 'Active' : 'None')
     : (m.presenceActive ? 'Active' : 'None');
 
   const statusWrap = document.querySelector('.ov-det-model-status-wrap');
@@ -859,6 +890,7 @@ async function loadDetectionTab() {
       return;
     }
     payload = await res.json();
+    lastEventsFingerprint = eventsFingerprint(payload?.events || []);
     document.title = `${payload.tab.pageTitle} — Atomo Forge`;
     const title = document.getElementById('detectionPageTitle');
     const crumb = document.getElementById('detectionBreadcrumb');
@@ -875,12 +907,15 @@ async function loadDetectionTab() {
 
 function prependEvents(newEvents, nextPayload) {
   if (!newEvents?.length) return;
-  if (nextPayload) payload = nextPayload;
-  else if (payload) {
+  if (nextPayload) {
+    payload = nextPayload;
+  } else if (payload) {
     const existing = new Set((payload.events || []).map((e) => e.id));
     const merged = [...newEvents.filter((e) => !existing.has(e.id)), ...(payload.events || [])].slice(0, 50);
     payload = { ...payload, events: merged };
   }
+  lastEventsFingerprint = eventsFingerprint(payload?.events || []);
+
   const host = document.getElementById('detEventsGalleryHost');
   if (!host) return;
   const q = eventSearchQuery.trim().toLowerCase();
@@ -898,15 +933,24 @@ function prependEvents(newEvents, nextPayload) {
   }
   host.querySelector('.ov-det-empty')?.remove();
   gallery.insertAdjacentHTML('afterbegin', toPrepend.map((e) => renderEventCard(e)).join(''));
+  while (gallery.children.length > 50) {
+    gallery.lastElementChild?.remove();
+  }
   updateEventCountLabel();
   wireGalleryEvents();
 }
 
 function refreshEventsOnly(nextPayload) {
   if (!nextPayload) return;
-  payload = nextPayload;
-  refreshEventsGallery();
-  updateEventCountLabel();
+  const nextEvents = nextPayload.events || [];
+  const fp = eventsFingerprint(nextEvents);
+  if (fp !== lastEventsFingerprint) {
+    payload = nextPayload;
+    refreshEventsGallery(true);
+    return;
+  }
+  payload = { ...payload, ...nextPayload, events: payload?.events || nextEvents };
+  applyLiveMetricsFromPayload(nextPayload);
 }
 
 function connectDashEventWs() {
@@ -922,24 +966,17 @@ function connectDashEventWs() {
     dashEventWs.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data);
-        if (msg.type !== 'person_update') return;
-        if (msg.newEvents?.length) prependEvents(msg.newEvents, msg.payload);
-        else if (msg.payload) refreshEventsOnly(msg.payload);
-        if (msg.payload?.peopleMetrics && window.PersonLive && isPersonTab) {
-          const m = msg.payload.peopleMetrics;
-          document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = m.current ?? 0; });
-          document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = m.peakToday ?? 0; });
-          document.querySelectorAll('[data-m="fps"]').forEach((el) => { el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—'; });
-          document.querySelectorAll('[data-m="inf"]').forEach((el) => { el.textContent = m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—'; });
-          document.querySelectorAll('[data-m="presence"]').forEach((el) => { el.textContent = m.presenceActive ? 'Active' : 'None'; });
+        if (msg.type === 'metrics_update') {
+          applyLiveMetricsFromPayload(msg.metrics || msg.payload);
+          return;
         }
-        if (msg.payload?.fireSmokeMetrics && window.PersonLive && isFireSmokeTab) {
-          const m = msg.payload.fireSmokeMetrics;
-          document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = m.current ?? 0; });
-          document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = m.peakToday ?? 0; });
-          document.querySelectorAll('[data-m="fps"]').forEach((el) => { el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—'; });
-          document.querySelectorAll('[data-m="inf"]').forEach((el) => { el.textContent = m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—'; });
-          document.querySelectorAll('[data-m="presence"]').forEach((el) => { el.textContent = m.alertsActive ? 'Active' : 'None'; });
+        if (msg.type !== 'detection_update' && msg.type !== 'person_update') return;
+        if (msg.newEvents?.length) {
+          prependEvents(msg.newEvents, msg.payload || payload);
+        } else if (msg.payload) {
+          refreshEventsOnly(msg.payload);
+        } else if (msg.metrics) {
+          applyLiveMetricsFromPayload(msg.metrics);
         }
       } catch {
         /* ignore */
@@ -955,7 +992,22 @@ function connectDashEventWs() {
   }
 }
 
-window.DetectionTab = { reload: loadDetectionTab, refreshEventsOnly, prependEvents };
+window.DetectionTab = {
+  reload: loadDetectionTab,
+  refreshEventsOnly,
+  prependEvents,
+  syncLivePayload(nextPayload) {
+    if (!nextPayload) return;
+    const currentIds = new Set((payload?.events || []).map((e) => e.id));
+    const incoming = nextPayload.events || [];
+    const fresh = incoming.filter((e) => !currentIds.has(e.id));
+    if (fresh.length) {
+      prependEvents(fresh, { ...payload, ...nextPayload, events: [...fresh, ...(payload?.events || [])].slice(0, 50) });
+      return;
+    }
+    refreshEventsOnly(nextPayload);
+  },
+};
 
 function startRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
@@ -970,10 +1022,10 @@ function startRefresh() {
       payload = next;
       const search = document.getElementById('detEventSearch');
       if (search) eventSearchQuery = search.value;
-      if (isLiveTab && document.getElementById('personWorkbench')) {
-        if (window.PersonLive?.refresh) window.PersonLive.refresh();
-      } else {
+      if (!isLiveTab || !document.getElementById('personWorkbench')) {
         refreshEventsGallery();
+      } else if (window.PersonLive?.refresh) {
+        window.PersonLive.refresh();
       }
     } catch {
       /* ignore */

@@ -3,8 +3,9 @@
    */
   (function () {
     const slug = document.body.dataset.detectionSlug;
-    const isLiveTab = slug === 'person' || slug === 'fire-smoke';
-    const isFireSmokeTab = slug === 'fire-smoke';
+    const isPersonTab = slug === 'person';
+    const isFaceTab = slug === 'face';
+    const isLiveTab = isPersonTab || isFaceTab;
     if (!isLiveTab) return;
 
     function liveApiPath(action) {
@@ -76,7 +77,7 @@
       const options = payload?.tab?.featureOptions || [];
       const features = payload?.state?.features || {};
       return options
-        .filter((o) => o.id !== 'detectPeople')
+        .filter((o) => o.id !== 'detectPeople' && o.id !== 'faceDetect')
         .map(
           (opt) => `
         <label class="ov-plive-chip ${opt.locked ? 'is-locked' : ''}" title="${esc(opt.description)}">
@@ -107,7 +108,7 @@
           <div class="ov-plive-empty-inner">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
             <h2>Select a camera</h2>
-            <p>Click any assigned camera above to open the live ${isFireSmokeTab ? 'fire &amp; smoke' : 'person'} detection view here.</p>
+            <p>Click any assigned camera above to open the live ${isFaceTab ? 'face recognition' : 'person'} detection view here.</p>
           </div>
         </article>`;
     }
@@ -161,7 +162,7 @@
       const cam = frameData?.camera || payload.assignedCameras?.find((c) => c.id === selectedCameraId)
         || { name: 'Camera', status: 'online' };
       const state = payload.state || {};
-      const m = frameData?.metrics || (isFireSmokeTab ? payload?.fireSmokeMetrics : payload?.peopleMetrics) || {};
+      const m = frameData?.metrics || (isFaceTab ? payload?.faceMetrics : payload?.peopleMetrics) || {};
       const pct = Math.round((state.confidence ?? 0.7) * 100);
       const filterOn = Boolean(state.features?.filterSmallObjects);
       const tooManyOn = Boolean(state.alerts?.['too-many-people']);
@@ -177,12 +178,12 @@
 
       const featureOptions = payload?.tab?.featureOptions || [];
       const showFeatures = featureOptions.length > 0;
-      const showMinSize = !isFireSmokeTab && filterOn;
-      const showMaxPeople = !isFireSmokeTab && tooManyOn;
-      const countLabel = isFireSmokeTab ? 'Alerts' : 'People';
-      const statusLabel = isFireSmokeTab ? 'Alert' : 'Presence';
-      const statusVal = isFireSmokeTab
-        ? (m.alertsActive ? 'Active' : 'None')
+      const showMinSize = isPersonTab && filterOn;
+      const showMaxPeople = isPersonTab && tooManyOn;
+      const countLabel = isFaceTab ? 'Faces' : 'People';
+      const statusLabel = isFaceTab ? 'Match' : 'Presence';
+      const statusVal = isFaceTab
+        ? (m.recognitionActive ? 'Active' : 'None')
         : (m.presenceActive ? 'Active' : 'None');
 
       return `
@@ -350,8 +351,8 @@
         peak: m.peakToday ?? 0,
         fps: m.fps != null ? Number(m.fps).toFixed(1) : '—',
         inf: m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—',
-        presence: isFireSmokeTab
-          ? (m.alertsActive ? 'Active' : 'None')
+        presence: isFaceTab
+          ? (m.recognitionActive ? 'Active' : 'None')
           : (m.presenceActive ? 'Active' : 'None'),
       };
       Object.entries(map).forEach(([key, val]) => {
@@ -361,7 +362,10 @@
     }
 
     function collectFeatures() {
-      const features = { ...(payload?.state?.features || {}), detectPeople: true };
+      const features = {
+        ...(payload?.state?.features || {}),
+        ...(isFaceTab ? { faceDetect: true } : { detectPeople: true }),
+      };
       document.querySelectorAll('[data-feature-id]').forEach((el) => {
         if (el.disabled) return;
         features[el.dataset.featureId] = el.checked;
@@ -414,8 +418,8 @@
         metrics: {
           ...(frameData?.metrics || {}),
           current: detections.length,
-          ...(isFireSmokeTab
-            ? { alertsActive: detections.length > 0 }
+          ...(isFaceTab
+            ? { recognitionActive: detections.length > 0 }
             : { presenceActive: detections.length > 0 }),
         },
       };
@@ -603,7 +607,11 @@
         if (!start) streamLocked = false;
         startPolling();
         await pollFrame();
-        if (start && window.DetectionTab?.reload) window.DetectionTab.reload();
+        if (start && window.DetectionTab?.syncLivePayload && data.payload) {
+          window.DetectionTab.syncLivePayload(data.payload);
+        } else if (start && window.DetectionTab?.reload) {
+          window.DetectionTab.reload();
+        }
       } catch (err) {
         showToast(err.message || 'Could not update detection');
       }
@@ -633,8 +641,8 @@
       if (note) {
         if (data?.backendError) note.textContent = data.backendError;
         else if (data?.backendConnected) {
-          if (isFireSmokeTab) {
-            note.textContent = 'Connected to vision backend — real-time fire & smoke inference active.';
+          if (isFaceTab) {
+            note.textContent = 'Connected to vision backend — real-time face recognition active.';
           } else if (data.workerSource === 'npu') {
             note.textContent = 'Khadas NPU person detection active (YOLO26s).';
           } else if (data.workerSource === 'local-cpu') {
@@ -757,18 +765,17 @@
         const score = Math.round((det.score || 0) * 100);
         const tid = det.track_id != null ? `#${det.track_id}` : '';
         const detLabel = det.label ? String(det.label) : '';
-        const boxColor = isFireSmokeTab
-          ? (detLabel === 'fire' ? '#ef4444' : '#f97316')
-          : '#22c55e';
+        const identity = det.identity ? String(det.identity) : '';
+        const boxColor = isFaceTab && identity === 'known' ? '#06b6d4' : '#22c55e';
         ctx.strokeStyle = boxColor;
         ctx.lineWidth = 2;
         ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        const label = isFireSmokeTab
-          ? `${detLabel ? detLabel.charAt(0).toUpperCase() + detLabel.slice(1) : 'Alert'} ${score}%`
+        const label = isFaceTab
+          ? `${identity === 'known' ? 'Known face' : 'Face'} ${score}%`
           : (tid ? `Person ${tid} ${score}%` : `Person ${score}%`);
         const lw = Math.max(72, label.length * 7);
-        ctx.fillStyle = isFireSmokeTab
-          ? (detLabel === 'fire' ? 'rgba(239, 68, 68, 0.85)' : 'rgba(249, 115, 22, 0.85)')
+        ctx.fillStyle = isFaceTab && identity === 'known'
+          ? 'rgba(6, 182, 212, 0.85)'
           : 'rgba(34, 197, 94, 0.85)';
         ctx.fillRect(x1, y1 - 20, lw, 20);
         ctx.fillStyle = '#fff';
@@ -1066,6 +1073,10 @@
         updateStatsOnly();
         updateInferenceUi(frameData);
 
+        if (frameData.payload && window.DetectionTab?.syncLivePayload) {
+          window.DetectionTab.syncLivePayload(frameData.payload);
+        }
+
         if (inferenceRunning && frameData.wsUrl && frameData.workerSource !== 'local-cpu' && !detWs) {
           connectDetectionWs(frameData.wsUrl);
         }
@@ -1144,7 +1155,11 @@
         if (inferenceRunning && frameData?.wsUrl && !detWs) {
           connectDetectionWs(frameData.wsUrl);
         }
-        if (window.DetectionTab?.reload) window.DetectionTab.reload();
+        if (payload && window.DetectionTab?.syncLivePayload) {
+          window.DetectionTab.syncLivePayload(payload);
+        } else if (window.DetectionTab?.reload) {
+          window.DetectionTab.reload();
+        }
         return;
       }
 
@@ -1168,7 +1183,9 @@
         }
       }
 
-      if (window.DetectionTab?.reload) {
+      if (payload && window.DetectionTab?.syncLivePayload) {
+        window.DetectionTab.syncLivePayload(payload);
+      } else if (window.DetectionTab?.reload) {
         window.DetectionTab.reload();
       }
     }

@@ -157,10 +157,10 @@ function initMobileNav() {
 
 const SUBSCRIPTION_TITLE = 'Subscription required';
 const SUBSCRIPTION_MESSAGE =
-  'This feature is included with an active Atomo Forge subscription. Upgrade your plan to unlock Face, Safety, AI Models, Settings, and more.';
+  'This feature is included with an active Atomo Forge subscription. Upgrade your plan to unlock Fire & Smoke, Safety, AI Models, Settings, and more.';
 
 const NAV_LABELS = {
-  face: 'Face Recognition',
+  'fire-smoke': 'Fire & Smoke',
   safety: 'Safety & PPE',
   'ai-models': 'AI Models',
   settings: 'Settings',
@@ -185,7 +185,7 @@ function ensureSubscriptionModal() {
       </div>
       <div class="ov-modal-foot">
         <a href="/detection/person" class="ov-quick-btn">Try Person detection</a>
-        <a href="/detection/fire-smoke" class="ov-quick-btn">Try Fire &amp; Smoke</a>
+        <a href="/detection/face" class="ov-quick-btn">Try Face recognition</a>
         <button type="button" class="ov-cam-add-btn" data-action="close-subscription">Got it</button>
       </div>
     </div>`;
@@ -202,7 +202,7 @@ function showSubscriptionModal(featureLabel) {
   const msg = document.getElementById('subscriptionModalMessage');
   if (msg) {
     msg.textContent = featureLabel
-      ? `${featureLabel} is included with an active Atomo Forge subscription. Upgrade your plan to unlock Face, Safety, AI Models, Settings, and more.`
+      ? `${featureLabel} is included with an active Atomo Forge subscription. Upgrade your plan to unlock Fire & Smoke, Safety, AI Models, Settings, and more.`
       : SUBSCRIPTION_MESSAGE;
   }
   modal.hidden = false;

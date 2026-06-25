@@ -114,7 +114,7 @@ function renderSources() {
 
 function isDetectionLiveTab() {
   const slug = document.body.dataset.detectionSlug;
-  return slug === 'person' || slug === 'fire-smoke';
+  return slug === 'person' || slug === 'face';
 }
 
 function renderCameraTile(cam) {
