@@ -22,7 +22,7 @@ const session = require('./lib/session');
 const dashboard = require('./lib/dashboard');
 const masterControl = require('./lib/master-control');
 const dashboardRbac = require('./lib/dashboard-rbac');
-const { isServerlessRuntime } = require('./lib/runtime-env');
+const { isServerlessRuntime, getProxyTimeoutMs } = require('./lib/runtime-env');
 const serverlessLifecycle = require('./lib/serverless-lifecycle');
 const pendingFlows = require('./lib/pending-flows');
 const sessionCookie = require('./lib/session-cookie');
@@ -146,20 +146,47 @@ const SIGNUP_OFFLINE_ERROR =
 const PASSWORD_RESET_OFFLINE_ERROR =
   'Password reset requires an internet connection to Atomic Center. Please connect and try again.';
 
+async function probeAtomicCenterOnline() {
+  const timeoutMs = getProxyTimeoutMs(8000);
+  try {
+    const health = await checkHealth(timeoutMs);
+    if (health.ok) {
+      meshcentralStatus.markReachable(health.data);
+      return { online: true, health: health.data };
+    }
+    meshcentralStatus.markUnreachable();
+    return { online: false, health: health.data || null };
+  } catch (e) {
+    meshcentralStatus.markUnreachable();
+    return { online: false, error: e.message };
+  }
+}
+
+async function buildAuthConnectivityPayload() {
+  const probe = await probeAtomicCenterOnline();
+  const cloudPortal = isServerlessRuntime();
+  return {
+    ...deviceStatusPayload(),
+    online: probe.online,
+    meshcentralReachable: probe.online,
+    cloudPortal,
+    meshcentralUrl,
+    emailVerificationEnabled: probe.health?.emailVerificationEnabled === true,
+    passwordResetEnabled: probe.health?.passwordResetEnabled === true,
+    connectivityError: probe.error || null,
+  };
+}
+
 async function isAtomicCenterOnline() {
-  // Allow enough time for the health probe to finish on slow Atomic Center
-  // servers, otherwise the race resolves early with a stale "offline" value.
-  return meshcentralStatus.isReachableFast({ maxWaitMs: 5500 });
+  if (!meshcentralStatus.isStale() && meshcentralStatus.getReachable()) {
+    return true;
+  }
+  const probe = await probeAtomicCenterOnline();
+  return probe.online;
 }
 
 async function requireOnlineForPasswordReset(res) {
-  const snap = meshcentralStatus.getSnapshot();
-  if (!snap.stale) {
-    if (snap.reachable) return true;
-    res.status(503).json({ error: PASSWORD_RESET_OFFLINE_ERROR });
-    return false;
-  }
-  const online = await meshcentralStatus.isReachableFast({ maxWaitMs: 5500 });
+  const online = await isAtomicCenterOnline();
   if (online) return true;
   res.status(503).json({ error: PASSWORD_RESET_OFFLINE_ERROR });
   return false;
@@ -369,13 +396,8 @@ app.get('/', (_req, res) => {
   res.redirect('/login');
 });
 
-app.get('/login', (_req, res) => {
-  const snap = meshcentralStatus.getSnapshot();
-  if (snap.stale) meshcentralStatus.refreshInBackground();
-  const boot = {
-    ...deviceStatusPayload(),
-    online: snap.reachable,
-  };
+app.get('/login', async (_req, res) => {
+  const boot = await buildAuthConnectivityPayload();
   const htmlPath = path.join(__dirname, 'views', 'login.html');
   let html = fs.readFileSync(htmlPath, 'utf8');
   const bootScript = `<script>window.__AF_LOGIN_BOOT__=${JSON.stringify(boot)};</script>`;
@@ -387,24 +409,26 @@ app.get('/signup', (_req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'signup.html'));
 });
 
-function buildPasswordResetModePayload() {
+async function buildPasswordResetModePayload() {
+  const probe = await probeAtomicCenterOnline();
+  const online = probe.online;
+  const health = probe.health || {};
   const binding = deviceBinding.getBinding();
-  const snap = meshcentralStatus.getSnapshot();
-  if (snap.stale) meshcentralStatus.refreshInBackground();
-
-  const online = snap.reachable;
-  const health = snap.health || {};
-  const cloudPasswordReset = online && health.passwordResetEnabled === true;
+  const cloudPortal = isServerlessRuntime();
+  const cloudPasswordReset = online && (
+    health.passwordResetEnabled === true || cloudPortal
+  );
 
   let mode = 'blocked';
   if (online && cloudPasswordReset) {
     mode = 'cloud';
-  } else if (binding && offlineLoginEnabled()) {
+  } else if (binding && offlineLoginEnabled() && !cloudPortal) {
     mode = 'local';
   }
 
   return {
     online,
+    cloudPortal,
     cloudPasswordReset,
     mode,
     meshcentralUrl,
@@ -414,8 +438,8 @@ function buildPasswordResetModePayload() {
   };
 }
 
-app.get('/forgot-password', (_req, res) => {
-  const boot = buildPasswordResetModePayload();
+app.get('/forgot-password', async (_req, res) => {
+  const boot = await buildPasswordResetModePayload();
   const htmlPath = path.join(__dirname, 'views', 'forgot-password.html');
   let html = fs.readFileSync(htmlPath, 'utf8');
   const bootScript = [
@@ -429,8 +453,8 @@ app.get('/forgot-password', (_req, res) => {
   res.type('html').send(html);
 });
 
-app.get('/api/password-reset/mode', (_req, res) => {
-  res.json(buildPasswordResetModePayload());
+app.get('/api/password-reset/mode', async (_req, res) => {
+  res.json(await buildPasswordResetModePayload());
 });
 
 app.post('/api/password-reset/local', async (req, res) => {
@@ -812,15 +836,8 @@ app.post('/api/device/register', async (req, res) => {
   }
 });
 
-app.get('/api/device/status', (_req, res) => {
-  if (meshcentralStatus.isStale()) {
-    meshcentralStatus.refresh().catch(() => {});
-  }
-  res.json({
-    ...deviceStatusPayload(),
-    meshcentralReachable: meshcentralStatus.getReachable(),
-    online: meshcentralStatus.getReachable(),
-  });
+app.get('/api/device/status', async (_req, res) => {
+  res.json(await buildAuthConnectivityPayload());
 });
 
 app.get('/api/device/cloud-sync', async (_req, res) => {
@@ -978,21 +995,15 @@ app.get('/api/health', async (_req, res) => {
 
 app.get('/api/config', async (_req, res) => {
   try {
-    const { status, data } = await proxyJson('/api/atomoforge/health', 'GET');
-    const online = status === 200 && data.ok === true;
-    res.status(status).json({
-      emailVerificationEnabled: !!data.emailVerificationEnabled,
-      online,
-      meshcentralReachable: online,
-      meshcentralUrl,
-      ...deviceStatusPayload(),
-    });
+    const payload = await buildAuthConnectivityPayload();
+    res.json(payload);
   } catch (e) {
     console.error('[API] GET /api/config failed:', e.message, e.cause?.message || '');
     res.status(503).json({
       emailVerificationEnabled: false,
       online: false,
       meshcentralReachable: false,
+      cloudPortal: isServerlessRuntime(),
       error: e.message,
       ...deviceStatusPayload(),
     });

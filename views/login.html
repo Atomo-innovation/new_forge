@@ -92,8 +92,26 @@
     }
 
     function applyDeviceStatus(data) {
+      const cloudPortal = data.cloudPortal === true;
       const online = data.online === true;
       const boundUser = data.boundUser?.username;
+
+      if (cloudPortal) {
+        deviceHint.textContent = online
+          ? 'Sign in with your Atomo Forge account.'
+          : 'Checking connection to Atomic Center… You can still try to sign in.';
+        deviceBanner.textContent = online
+          ? 'Connected to Atomic Center (AWS).'
+          : (data.connectivityError
+            ? `Could not confirm Atomic Center yet: ${data.connectivityError}`
+            : 'Checking connection to Atomic Center…');
+        deviceBanner.className = online ? 'alert alert-success visible' : 'alert alert-error visible';
+        setUsernameLocked(false);
+        setSignupLinkVisible(true);
+        document.getElementById('forgotPasswordLink')?.classList.remove('hidden');
+        loginBtn.disabled = false;
+        return;
+      }
 
       if (online) {
         deviceHint.textContent = boundUser
@@ -138,12 +156,15 @@
       }
 
       try {
-        const res = await fetch('/api/device/status');
+        const res = await fetch('/api/device/status', { credentials: 'same-origin' });
         const data = await res.json();
         applyDeviceStatus(data);
       } catch {
-        if (!window.__AF_LOGIN_BOOT__) {
+        if (window.__AF_LOGIN_BOOT__?.cloudPortal) {
+          applyDeviceStatus({ ...window.__AF_LOGIN_BOOT__, online: false });
+        } else if (!window.__AF_LOGIN_BOOT__) {
           deviceHint.textContent = 'Could not load device status. You can still try to sign in.';
+          loginBtn.disabled = false;
         }
       }
     }

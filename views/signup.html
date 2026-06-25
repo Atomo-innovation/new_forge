@@ -104,6 +104,7 @@
     let pendingOtpId = '';
     let smtpReady = false;
     let signupAllowed = false;
+    let cloudPortal = false;
 
     function disableSignupForm(message, hint) {
       deviceBlock.textContent = message;
@@ -113,34 +114,48 @@
       signupForm.querySelectorAll('input').forEach((el) => { el.disabled = true; });
     }
 
-    fetch('/api/config')
-      .then((r) => r.json())
-      .then((cfg) => {
-        const online = cfg.online === true;
+    function enableSignupForm(cfg) {
+      cloudPortal = cfg.cloudPortal === true;
+      const online = cfg.online === true;
+      signupAllowed = online || cloudPortal;
 
-        if (!online) {
-          disableSignupForm(
-            'You are offline. Account creation requires a connection to Atomic Center (AWS).',
-            'Connect to the internet, then try again.'
-          );
-          return;
-        }
+      if (!online && !cloudPortal) {
+        disableSignupForm(
+          'You are offline. Account creation requires a connection to Atomic Center (AWS).',
+          'Connect to the internet, then try again.'
+        );
+        return;
+      }
 
+      if (online) {
         onlineBanner.textContent = 'Connected to Atomic Center. You can create a new account.';
         onlineBanner.classList.remove('hidden');
-        signupAllowed = true;
-        smtpReady = !!cfg.emailVerificationEnabled;
+      } else {
+        onlineBanner.textContent = 'Checking Atomic Center connection… You can still try to create an account.';
+        onlineBanner.classList.remove('hidden');
+        onlineBanner.className = 'alert alert-error visible';
+      }
 
-        if (!smtpReady) {
-          smtpAlert.classList.remove('hidden');
-          continueBtn.disabled = true;
-        } else {
-          continueBtn.disabled = false;
-        }
+      smtpReady = cfg.emailVerificationEnabled !== false;
+      if (!smtpReady && online) {
+        smtpAlert.classList.remove('hidden');
+        continueBtn.disabled = true;
+      } else {
+        smtpAlert.classList.add('hidden');
+        continueBtn.disabled = false;
+      }
 
-        if (cfg.bound && cfg.boundUser) {
-          signupHint.textContent = `Online — new accounts are created on Atomic Center. This device uses ${cfg.boundUser.username} for offline sign-in.`;
-        }
+      if (cfg.bound && cfg.boundUser && !cloudPortal) {
+        signupHint.textContent = `Online — new accounts are created on Atomic Center. This device uses ${cfg.boundUser.username} for offline sign-in.`;
+      } else if (cloudPortal) {
+        signupHint.textContent = 'Create your Atomo Forge account on Atomic Center (AWS).';
+      }
+    }
+
+    fetch('/api/config', { credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((cfg) => {
+        enableSignupForm(cfg);
       })
       .catch(() => {
         disableSignupForm(
