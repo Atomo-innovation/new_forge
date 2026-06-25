@@ -548,7 +548,7 @@ app.get('/api/session', async (req, res) => {
   let cloudRegistrationReset = false;
 
   const online = await isAtomicCenterOnline();
-  if (online) {
+  if (online && !isDemoMode()) {
     if (onboardingComplete) {
       const cloudSyncResult = await syncOnboardingWithCloud({
         meshUserId: sess.meshUserId,
@@ -604,6 +604,7 @@ app.get('/api/session', async (req, res) => {
     userRole: activeRoleId ? dashboardRbac.getRolePayload(activeRoleId) : null,
     cloudRegistrationReset,
     redirectTo,
+    demoMode: isDemoMode(),
     profile,
     masterControl: {
       enabled: masterControl.isFlagEnabled('master_control', { userId: current.meshUserId }),
@@ -682,24 +683,7 @@ app.post('/api/device/register', async (req, res) => {
     return res.status(400).json({ error: `Required fields missing: ${missing.join(', ')}.` });
   }
 
-  if (deviceProfile.isUserOnboarded(sessRecord.meshUserId)) {
-    if (isDemoMode() && serverless) {
-      const profile = deviceProfile.getProfile();
-      markDemoOnboardingComplete(sessRecord, email || sessRecord.email);
-      return res.json({
-        ...buildDemoRegistrationResult({
-          sessRecord,
-          profile,
-          profilePayload: {
-            deviceName: profile?.deviceName || deviceName,
-            organizationName: profile?.organizationName || organizationName,
-            meshGroupName: profile?.meshGroupName || meshGroupName,
-          },
-        }),
-        alreadyRegistered: true,
-        message: 'Welcome back — opening your demo dashboard…',
-      });
-    }
+  if (deviceProfile.isUserOnboarded(sessRecord.meshUserId) && !(isDemoMode() && serverless)) {
     markOnboardingComplete(sessRecord, email || sessRecord.email);
     return res.json({
       success: true,

@@ -41,6 +41,7 @@
       }
 
       const allowedHere = allowPaths.includes(pathname)
+        || (pathname === '/device-registration' && (data.demoMode || data.redirectTo === '/device-registration'))
         || (pathname === '/overview' && (data.redirectTo === '/overview' || data.redirectTo === '/dashboard'))
         || (pathname === '/dashboard' && data.redirectTo === '/overview');
 
