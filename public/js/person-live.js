@@ -255,6 +255,10 @@
         </article>`;
     }
 
+    function isVideoFilePreview(preview) {
+      return preview?.mode === 'video' && preview.url && !preview.simulated;
+    }
+
     function mount(skipStreamInit) {
       const root = getRoot();
       if (!root) return;
@@ -969,16 +973,29 @@
         video.muted = true;
         video.loop = true;
         video.playsInline = true;
-        video.onerror = fallbackSim;
+        video.preload = 'auto';
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
         host.insertBefore(video, host.firstChild);
         const meta = document.getElementById('pliveStreamMeta');
         if (meta) meta.textContent = preview.label || 'Demo video stream';
+        streamInitialized = true;
+        streamLocked = true;
+        usingHlsStream = false;
+        usingWhepStream = false;
         video.addEventListener('loadeddata', () => {
-          streamInitialized = true;
           drawBoxesOverlay();
           startOverlayLoop();
         });
-        video.play().catch(fallbackSim);
+        video.addEventListener('playing', () => {
+          stopSimAnim();
+          drawBoxesOverlay();
+          startOverlayLoop();
+        });
+        video.onerror = fallbackSim;
+        video.play().catch(() => {
+          video.play().catch(fallbackSim);
+        });
         return;
       }
 
@@ -1040,6 +1057,11 @@
         return;
       }
 
+      if (isVideoFilePreview(preview)) {
+        initStreamWithPreview({ preview, camera: frameData?.camera });
+        return;
+      }
+
       const camName = frameData?.camera?.name || 'Camera';
       startSimAnim(camName);
     }
@@ -1061,13 +1083,18 @@
         if (usingWhepStream || usingHlsStream) {
           startOverlayLoop();
           drawBoxesOverlay();
-        } else if (host?.querySelector('video.ov-plive-media')) {
-          startOverlayLoop();
-          drawBoxesOverlay();
-        } else if (!simAnimTimer && frameData.preview?.simulated) {
-          startSimAnim(frameData.camera?.name);
         } else {
-          drawBoxesOverlay();
+          const streamHost = document.getElementById('pliveStreamHost');
+          if (streamHost?.querySelector('video.ov-plive-media')) {
+            startOverlayLoop();
+            drawBoxesOverlay();
+          } else if (simAnimTimer && isVideoFilePreview(frameData?.preview)) {
+            initStreamWithPreview({ preview: frameData.preview, camera: frameData.camera });
+          } else if (!simAnimTimer && frameData.preview?.simulated) {
+            startSimAnim(frameData.camera?.name);
+          } else {
+            drawBoxesOverlay();
+          }
         }
 
         updateStatsOnly();
@@ -1123,33 +1150,43 @@
       ensureLoadingStyle();
       const root = getRoot();
       const camName = (payload?.assignedCameras || []).find((c) => c.id === cameraId)?.name || 'Camera';
-      if (root && cameraChanged) {
-        root.hidden = false;
-        root.innerHTML = renderLoadingState(camName);
-      }
 
+      let selectData = null;
       try {
-        setLoadingStatus('Syncing camera with backend…');
         const res = await fetch(sessionUrl(`/api/detection/${slug}/live/${encodeURIComponent(cameraId)}/select`), {
           method: 'POST',
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        payload = data.payload || payload;
-        if (data.preview) {
-          frameData = { ...(frameData || {}), preview: data.preview, camera: data.camera };
+        selectData = await res.json();
+        if (!res.ok) throw new Error(selectData.error);
+        payload = selectData.payload || payload;
+        if (selectData.preview) {
+          frameData = { ...(frameData || {}), preview: selectData.preview, camera: selectData.camera };
         }
-        if (data.demoMode || data.payload?.state?.inferenceRunning) {
+        if (selectData.demoMode || selectData.payload?.state?.inferenceRunning) {
           inferenceRunning = true;
         }
-        if (data.backendReachable === false && !data.demoMode) {
+        if (selectData.backendReachable === false && !selectData.demoMode) {
           showToast('Vision backend offline — preview mode only');
         }
       } catch (err) {
         showToast(err.message || 'Could not select camera');
       }
 
-      mount(cameraChanged ? false : true);
+      const demoVideoReady = selectData?.demoMode && isVideoFilePreview(frameData?.preview);
+
+      if (root && cameraChanged && !demoVideoReady) {
+        root.hidden = false;
+        root.innerHTML = renderLoadingState(camName);
+      }
+
+      mount(false);
+
+      if (demoVideoReady) {
+        if (payload && window.DetectionTab?.syncLivePayload) {
+          window.DetectionTab.syncLivePayload(payload);
+        }
+        return;
+      }
 
       if (!cameraChanged && streamInitialized) {
         if (inferenceRunning && frameData?.wsUrl && !detWs) {
@@ -1230,8 +1267,7 @@
         await selectCamera(activeId);
         if (demoMode) {
           await ensureDemoDetection(activeId);
-          mount(true);
-          startPolling();
+          if (!pollTimer) startPolling();
           await pollFrame();
         }
         return;

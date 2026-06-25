@@ -425,8 +425,10 @@ function initStreamPreview() {
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
+    video.preload = 'auto';
     video.onerror = () => showSimulatedPreview(host, camera);
     host.appendChild(video);
+    video.play().catch(() => video.play().catch(() => showSimulatedPreview(host, camera)));
     return;
   }
 
