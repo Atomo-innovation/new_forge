@@ -27,6 +27,8 @@ const serverlessLifecycle = require('./lib/serverless-lifecycle');
 const pendingFlows = require('./lib/pending-flows');
 const sessionCookie = require('./lib/session-cookie');
 const dashboardAuth = require('./lib/dashboard-auth');
+const { isDemoMode } = require('./lib/demo-mode');
+const { buildDemoRegistrationResult } = require('./lib/demo-registration');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -105,6 +107,15 @@ function validateOnboardingEmail(sessRecord, formEmail) {
   };
 }
 
+function markDemoOnboardingComplete(sessRecord, email) {
+  const resolved = email || sessRecord.email || `${sessRecord.username}@demo.local`;
+  deviceProfile.markUserOnboarded({
+    meshUserId: sessRecord.meshUserId,
+    email: resolved,
+  });
+  dashboardAuth.markOnboardingComplete(sessRecord, resolved);
+}
+
 function markOnboardingComplete(sessRecord, formEmail) {
   const validated = validateOnboardingEmail(sessRecord, formEmail);
   if (!validated.ok) return validated;
@@ -170,6 +181,7 @@ async function buildAuthConnectivityPayload() {
     online: probe.online,
     meshcentralReachable: probe.online,
     cloudPortal,
+    demoMode: isDemoMode(),
     meshcentralUrl,
     emailVerificationEnabled: probe.health?.emailVerificationEnabled === true,
     passwordResetEnabled: probe.health?.passwordResetEnabled === true,
@@ -613,6 +625,7 @@ app.get('/api/device/profile', (_req, res) => {
     deviceSerial: deviceBinding.getDeviceSerial(),
     meshcentralUrl,
     cloudPortal: isServerlessRuntime(),
+    demoMode: isDemoMode(),
   });
 });
 
@@ -670,6 +683,23 @@ app.post('/api/device/register', async (req, res) => {
   }
 
   if (deviceProfile.isUserOnboarded(sessRecord.meshUserId)) {
+    if (isDemoMode() && serverless) {
+      const profile = deviceProfile.getProfile();
+      markDemoOnboardingComplete(sessRecord, email || sessRecord.email);
+      return res.json({
+        ...buildDemoRegistrationResult({
+          sessRecord,
+          profile,
+          profilePayload: {
+            deviceName: profile?.deviceName || deviceName,
+            organizationName: profile?.organizationName || organizationName,
+            meshGroupName: profile?.meshGroupName || meshGroupName,
+          },
+        }),
+        alreadyRegistered: true,
+        message: 'Welcome back — opening your demo dashboard…',
+      });
+    }
     markOnboardingComplete(sessRecord, email || sessRecord.email);
     return res.json({
       success: true,
@@ -681,7 +711,9 @@ app.post('/api/device/register', async (req, res) => {
     });
   }
 
-  const onboardingCheck = validateOnboardingEmail(sessRecord, email);
+  const onboardingCheck = (isDemoMode() && serverless)
+    ? { ok: true, email: email || sessRecord.email || null }
+    : validateOnboardingEmail(sessRecord, email);
   if (!onboardingCheck.ok) {
     return res.status(400).json({ error: onboardingCheck.error });
   }
@@ -707,6 +739,15 @@ app.post('/api/device/register', async (req, res) => {
 
   try {
     const profile = deviceProfile.saveProfile(profilePayload);
+
+    if (isDemoMode() && serverless) {
+      markDemoOnboardingComplete(sessRecord, profilePayload.email);
+      return res.json(buildDemoRegistrationResult({
+        sessRecord,
+        profile,
+        profilePayload,
+      }));
+    }
 
     if (!registerMeshCentral) {
       let cloudSave = { ok: false };

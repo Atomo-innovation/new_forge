@@ -25,6 +25,9 @@
     </header>
 
     <div id="alert" class="alert alert-error" role="alert"></div>
+    <div id="demoBanner" class="alert alert-success hidden" role="status">
+      Demo mode — registration simulates the full setup flow, then opens the dashboard.
+    </div>
     <div id="resultPanel" class="registration-result hidden" role="status"></div>
 
     <form id="registrationForm" class="registration-form" novalidate>
@@ -254,10 +257,19 @@
 
     let sessionId = sessionStorage.getItem('atomoSessionId');
     let cloudPortal = false;
+    let demoMode = false;
     let processingTimer = null;
     let stepTimer = null;
 
     function cloudPortalSteps() {
+      if (demoMode) {
+        return [
+          'Connecting to Atomic Center…',
+          'Creating device group on Atomic Center…',
+          'Saving device profile…',
+          'Preparing dashboard…',
+        ];
+      }
       return cloudPortal
         ? [
           'Connecting to Atomic Center…',
@@ -290,6 +302,16 @@
         return `<li class="phase-item ${cls}"><span class="phase-icon">${icon}</span><span>${escapeHtml(p.message || p.label)}</span></li>`;
       }).join('');
       return `<ul class="phase-list">${items}</ul>`;
+    }
+
+    async function animateRegistrationPhases(phases) {
+      if (!phases?.length) return;
+      for (let i = 0; i < phases.length; i += 1) {
+        const phase = phases[i];
+        processingStep.textContent = phase.message || phase.label;
+        processingBar.style.width = `${Math.round(((i + 1) / phases.length) * 100)}%`;
+        await new Promise((resolve) => setTimeout(resolve, demoMode ? 1300 : 500));
+      }
     }
 
     function showResult(data) {
@@ -388,6 +410,12 @@
         const data = await res.json();
 
         cloudPortal = data.cloudPortal === true;
+        demoMode = data.demoMode === true;
+        if (demoMode) {
+          document.getElementById('demoBanner')?.classList.remove('hidden');
+          document.querySelector('.processing-hint').textContent =
+            'Demo setup takes a few seconds. Please keep this page open.';
+        }
         if (cloudPortal) {
           const hint = document.querySelector('.registration-subtitle');
           if (hint) {
@@ -431,6 +459,20 @@
         if (auth.email) {
           emailInput.placeholder = auth.email;
         }
+
+        const orgInput = document.getElementById('organizationName');
+        const meshGroupInput = document.getElementById('meshGroupName');
+        if (demoMode && orgInput && meshGroupInput && !meshGroupInput.value) {
+          orgInput.addEventListener('input', () => {
+            const org = orgInput.value.trim();
+            if (org && !meshGroupInput.dataset.userEdited) {
+              meshGroupInput.value = `${org} Devices`;
+            }
+          });
+          meshGroupInput.addEventListener('input', () => {
+            meshGroupInput.dataset.userEdited = meshGroupInput.value.trim() ? '1' : '';
+          });
+        }
       } catch {
         showAlert('Failed to load device information.');
       }
@@ -463,6 +505,7 @@
     }
 
     function needsCredentialsModal() {
+      if (demoMode) return false;
       if (!registerMeshCentral.checked) return false;
       if (cloudPortal) return true;
       return needsDevicePassword();
@@ -484,11 +527,13 @@
       let stepIndex = 0;
       processingStep.textContent = steps[0];
       processingBar.style.width = '8%';
-      stepTimer = setInterval(() => {
-        stepIndex = Math.min(stepIndex + 1, steps.length - 1);
-        processingStep.textContent = steps[stepIndex];
-        processingBar.style.width = `${Math.min(8 + stepIndex * 18, 92)}%`;
-      }, 8000);
+      if (!demoMode) {
+        stepTimer = setInterval(() => {
+          stepIndex = Math.min(stepIndex + 1, steps.length - 1);
+          processingStep.textContent = steps[stepIndex];
+          processingBar.style.width = `${Math.min(8 + stepIndex * 18, 92)}%`;
+        }, 8000);
+      }
     }
 
     function hideProcessingOverlay(success) {
@@ -563,7 +608,9 @@
           sessionStorage.setItem('atomoSessionId', data.sessionId);
         }
 
-        if (data.phases && data.phases.length) {
+        if (data.demoMode && data.phases?.length) {
+          await animateRegistrationPhases(data.phases);
+        } else if (data.phases && data.phases.length) {
           const last = data.phases[data.phases.length - 1];
           processingStep.textContent = last.message || last.label;
           processingBar.style.width = '100%';
@@ -577,8 +624,8 @@
           if (el.id !== 'cancelBtn') el.disabled = true;
         });
         setTimeout(() => {
-          window.location.href = data.redirectTo || '/cluster-role';
-        }, 3000);
+          window.location.href = data.redirectTo || (demoMode ? '/overview' : '/cluster-role');
+        }, demoMode ? 1800 : 3000);
       } catch (err) {
         hideProcessingOverlay(false);
         showAlert(err.name === 'AbortError'
