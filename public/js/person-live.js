@@ -17,7 +17,7 @@
     }
 
     function clampDemoMetrics(m) {
-      if (!isDemoLive()) return m;
+      if (!isDemoLive() || !inferenceRunning) return m;
       const out = { ...m };
       if (out.current == null || out.current < DEMO_MIN_COUNT) out.current = DEMO_MIN_COUNT;
       if (out.peakToday == null || out.peakToday < DEMO_PEAK_COUNT) out.peakToday = DEMO_PEAK_COUNT;
@@ -277,6 +277,27 @@
       return preview?.mode === 'video' && preview.url && !preview.simulated;
     }
 
+    function swapDemoVideo(preview) {
+      if (!isVideoFilePreview(preview)) return;
+      const host = document.getElementById('pliveStreamHost');
+      const video = host?.querySelector('video.ov-plive-media');
+      if (!video) {
+        initStreamWithPreview({ preview, camera: frameData?.camera });
+        return;
+      }
+      const nextUrl = preview.url;
+      const current = video.dataset.demoVideo || video.getAttribute('src') || '';
+      if (current.endsWith(nextUrl)) return;
+      video.dataset.demoVideo = nextUrl;
+      video.src = nextUrl;
+      video.load();
+      video.play().catch(() => {});
+      const meta = document.getElementById('pliveStreamMeta');
+      if (meta && preview.label) meta.textContent = preview.label;
+      streamInitialized = true;
+      streamLocked = true;
+    }
+
     function mount(skipStreamInit) {
       const root = getRoot();
       if (!root) return;
@@ -446,7 +467,7 @@
             : { presenceActive: detections.length > 0 }),
         },
       };
-      if (isDemoLive() && frameData.metrics.current < DEMO_MIN_COUNT) {
+      if (isDemoLive() && inferenceRunning && frameData.metrics.current < DEMO_MIN_COUNT) {
         frameData.metrics.current = DEMO_MIN_COUNT;
       }
       updateStatsOnly();
@@ -630,8 +651,16 @@
           startOverlayLoop();
         }
         if (!start) streamLocked = false;
-        startPolling();
-        await pollFrame();
+        if (isDemoLive() && data.preview) {
+          frameData = { ...(frameData || {}), preview: data.preview };
+          swapDemoVideo(data.preview);
+        }
+        if (start) {
+          startPolling();
+          await pollFrame();
+        } else if (isDemoLive()) {
+          stopPolling();
+        }
         if (start && window.DetectionTab?.syncLivePayload && data.payload) {
           window.DetectionTab.syncLivePayload(data.payload);
         } else if (start && window.DetectionTab?.reload) {
@@ -923,6 +952,7 @@
       }
 
       if (isVideoFilePreview(preview) && host.querySelector('video.ov-plive-media') && streamInitialized) {
+        swapDemoVideo(preview);
         return;
       }
 
@@ -1012,6 +1042,7 @@
         video.preload = 'auto';
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
+        video.dataset.demoVideo = preview.url;
         host.insertBefore(video, host.firstChild);
         const meta = document.getElementById('pliveStreamMeta');
         if (meta) meta.textContent = preview.label || 'Demo video stream';
@@ -1149,7 +1180,7 @@
     function startPolling() {
       stopPolling();
       pollFrame();
-      const demo = isDemoLive();
+      const demo = isDemoLive() && inferenceRunning;
       const ms = demo
         ? 300
         : inferenceRunning
@@ -1204,7 +1235,7 @@
         if (selectData.demoMode) {
           frameData = { ...(frameData || {}), demoMode: true };
         }
-        if (selectData.demoMode || selectData.payload?.state?.inferenceRunning) {
+        if (!selectData.demoMode && selectData.payload?.state?.inferenceRunning) {
           inferenceRunning = true;
         }
         if (selectData.backendReachable === false && !selectData.demoMode) {
@@ -1224,6 +1255,7 @@
       mount(false);
 
       if (demoVideoReady) {
+        initStreamWithPreview({ preview: frameData.preview, camera: frameData.camera });
         if (payload && window.DetectionTab?.syncLivePayload) {
           window.DetectionTab.syncLivePayload(payload);
         }
@@ -1273,23 +1305,6 @@
       return selectedCameraId;
     }
 
-    async function ensureDemoDetection(cameraId) {
-      try {
-        const res = await fetch(sessionUrl(`/api/detection/${slug}/live/${encodeURIComponent(cameraId)}/start`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        const data = await res.json();
-        if (res.ok && data.ok !== false) {
-          inferenceRunning = true;
-          if (data.payload) payload = data.payload;
-          updateInferenceUi(data);
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
     async function initFromPayload(detPayload) {
       payload = detPayload;
       currentConfidence = payload?.state?.confidence ?? 0.32;
@@ -1300,16 +1315,17 @@
       if (activeId) {
         if (activeId === selectedCameraId && streamInitialized) {
           mount(true);
-          if (demoMode && (detPayload?.state?.inferenceRunning || inferenceRunning)) {
-            await ensureDemoDetection(activeId);
+          if (demoMode && detPayload?.state?.inferenceRunning) {
+            inferenceRunning = true;
             startPolling();
+            await pollFrame();
           }
           return;
         }
         await selectCamera(activeId);
-        if (demoMode) {
-          await ensureDemoDetection(activeId);
-          if (!pollTimer) startPolling();
+        if (demoMode && detPayload?.state?.inferenceRunning) {
+          inferenceRunning = true;
+          startPolling();
           await pollFrame();
         }
         return;
