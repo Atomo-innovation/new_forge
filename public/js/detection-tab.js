@@ -104,8 +104,8 @@ function applyLiveMetricsFromPayload(source) {
     : (source.peopleMetrics || null);
   if (!m) return;
   const demo = source.demoMode === true || document.body.classList.contains('demo-mode');
-  const current = demo && (m.current == null || m.current < 3) ? 3 : (m.current ?? 0);
-  const peak = demo && (m.peakToday == null || m.peakToday < 5) ? 5 : (m.peakToday ?? 0);
+  const current = demo && (m.current == null || m.current < 6) ? 6 : (m.current ?? 0);
+  const peak = demo && (m.peakToday == null || m.peakToday < 8) ? 8 : (m.peakToday ?? 0);
   document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = current; });
   document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = peak; });
   document.querySelectorAll('[data-m="fps"]').forEach((el) => {
@@ -693,9 +693,9 @@ function refreshPersonLiveSections() {
   const running = payload.state?.inferenceRunning;
 
   const vals = document.querySelectorAll('.ov-det-metrics-strip .ov-det-metric-val');
-  const current = demo && (m.current == null || m.current < 3) ? 3 : (m.current ?? 0);
-  const peak = demo && (r.peakPeopleToday == null && (m.peakToday == null || m.peakToday < 5))
-    ? 5
+  const current = demo && (m.current == null || m.current < 6) ? 6 : (m.current ?? 0);
+  const peak = demo && (r.peakPeopleToday == null && (m.peakToday == null || m.peakToday < 8))
+    ? 8
     : (r.peakPeopleToday ?? m.peakToday ?? 0);
   if (vals[0]) vals[0].textContent = String(current);
   if (vals[1]) vals[1].textContent = String(peak);
