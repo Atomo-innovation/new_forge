@@ -97,6 +97,16 @@ function mergeEventsMonotonic(existing, incoming) {
     .slice(0, 50);
 }
 
+function demoMetricsNow() {
+  const tick = Math.floor(Date.now() / 1000);
+  return {
+    current: tick % 2 === 0 ? 6 : 7,
+    peakToday: 8,
+    fps: Math.round((22.5 + (tick % 4) * 0.65) * 10) / 10,
+    inferenceMs: 36 + (tick % 5) * 3,
+  };
+}
+
 function applyLiveMetricsFromPayload(source) {
   if (!source) return;
   const m = isFaceTab
@@ -104,20 +114,35 @@ function applyLiveMetricsFromPayload(source) {
     : (source.peopleMetrics || null);
   if (!m) return;
   const demo = source.demoMode === true || document.body.classList.contains('demo-mode');
-  const current = demo && (m.current == null || m.current < 6) ? 6 : (m.current ?? 0);
-  const peak = demo && (m.peakToday == null || m.peakToday < 8) ? 8 : (m.peakToday ?? 0);
+  const running = isDetectionActive(source);
+  let current;
+  let peak;
+  let fps;
+  let inferenceMs;
+  if (demo && running) {
+    const d = demoMetricsNow();
+    current = d.current;
+    peak = d.peakToday;
+    fps = d.fps;
+    inferenceMs = d.inferenceMs;
+  } else {
+    current = m.current ?? 0;
+    peak = demo && (m.peakToday == null || m.peakToday < 8) ? 8 : (m.peakToday ?? 0);
+    fps = m.fps;
+    inferenceMs = m.inferenceMs;
+  }
   document.querySelectorAll('[data-m="current"]').forEach((el) => { el.textContent = current; });
   document.querySelectorAll('[data-m="peak"]').forEach((el) => { el.textContent = peak; });
   document.querySelectorAll('[data-m="fps"]').forEach((el) => {
-    el.textContent = m.fps != null ? Number(m.fps).toFixed(1) : '—';
+    el.textContent = fps != null ? Number(fps).toFixed(1) : '—';
   });
   document.querySelectorAll('[data-m="inf"]').forEach((el) => {
-    el.textContent = m.inferenceMs != null ? `${Math.round(m.inferenceMs)}ms` : '—';
+    el.textContent = inferenceMs != null ? `${Math.round(inferenceMs)}ms` : '—';
   });
   document.querySelectorAll('[data-m="presence"]').forEach((el) => {
     el.textContent = isFaceTab
-      ? (m.recognitionActive ? 'Active' : 'None')
-      : (m.presenceActive ? 'Active' : 'None');
+      ? ((demo && running) || m.recognitionActive ? 'Active' : 'None')
+      : ((demo && running) || m.presenceActive ? 'Active' : 'None');
   });
 }
 
@@ -690,13 +715,16 @@ function refreshPersonLiveSections() {
   const demo = payload.demoMode === true || document.body.classList.contains('demo-mode');
   const m = isFaceTab ? (payload.faceMetrics || {}) : (payload.peopleMetrics || {});
   const r = payload.report || {};
-  const running = payload.state?.inferenceRunning;
+  const running = isDetectionActive(payload);
+  const demoLive = demo && running ? demoMetricsNow() : null;
 
   const vals = document.querySelectorAll('.ov-det-metrics-strip .ov-det-metric-val');
-  const current = demo && (m.current == null || m.current < 6) ? 6 : (m.current ?? 0);
-  const peak = demo && (r.peakPeopleToday == null && (m.peakToday == null || m.peakToday < 8))
-    ? 8
-    : (r.peakPeopleToday ?? m.peakToday ?? 0);
+  const current = demoLive ? demoLive.current : (m.current ?? 0);
+  const peak = demoLive
+    ? demoLive.peakToday
+    : (demo && (r.peakPeopleToday == null && (m.peakToday == null || m.peakToday < 8))
+      ? 8
+      : (r.peakPeopleToday ?? m.peakToday ?? 0));
   if (vals[0]) vals[0].textContent = String(current);
   if (vals[1]) vals[1].textContent = String(peak);
   if (vals[2]) vals[2].textContent = String(r.eventsToday ?? 0);
@@ -1213,6 +1241,7 @@ window.DetectionTab = {
   refreshEventsOnly,
   prependEvents,
   syncLiveMetrics,
+  applyLiveMetricsFromPayload,
   clearEventsGallery,
   setDetectionEventsVisible,
   syncLivePayload(nextPayload) {

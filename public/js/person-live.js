@@ -9,7 +9,6 @@
     if (!isLiveTab) return;
 
     const DEMO_PEAK_COUNT = 8;
-    const DEMO_MIN_COUNT = 6;
     const DEMO_PREVIEW_VIDEO = '/demo/wnew23.mp4';
     const DEMO_DETECTION_VIDEO = '/demo/dnew12.mp4';
     let demoVideoPreloaded = false;
@@ -20,12 +19,24 @@
         || document.body.classList.contains('demo-mode');
     }
 
+    function demoMetricsNow() {
+      const tick = Math.floor(Date.now() / 1000);
+      return {
+        current: tick % 2 === 0 ? 6 : 7,
+        peakToday: DEMO_PEAK_COUNT,
+        fps: Math.round((22.5 + (tick % 4) * 0.65) * 10) / 10,
+        inferenceMs: 36 + (tick % 5) * 3,
+      };
+    }
+
     function clampDemoMetrics(m) {
       if (!isDemoLive() || !inferenceRunning) return m;
-      const out = { ...m };
-      if (out.current == null || out.current < DEMO_MIN_COUNT) out.current = DEMO_MIN_COUNT;
-      if (out.peakToday == null || out.peakToday < DEMO_PEAK_COUNT) out.peakToday = DEMO_PEAK_COUNT;
-      return out;
+      const demo = demoMetricsNow();
+      return {
+        ...m,
+        ...demo,
+        ...(isFaceTab ? { recognitionActive: true } : { presenceActive: true }),
+      };
     }
 
     function liveApiPath(action) {
@@ -36,6 +47,7 @@
     let payload = null;
     let frameData = null;
     let pollTimer = null;
+    let demoMetricsTimer = null;
     let simAnimTimer = null;
     let configSaveTimer = null;
     let inferenceRunning = false;
@@ -517,19 +529,31 @@
     function applyDetections(detections, ts) {
       if (ts < lastFrameTs) return;
       lastFrameTs = ts;
-      frameData = {
-        ...(frameData || {}),
-        detections,
-        metrics: {
-          ...(frameData?.metrics || {}),
-          current: detections.length,
-          ...(isFaceTab
-            ? { recognitionActive: detections.length > 0 }
-            : { presenceActive: detections.length > 0 }),
-        },
-      };
-      if (isDemoLive() && inferenceRunning && frameData.metrics.current < DEMO_MIN_COUNT) {
-        frameData.metrics.current = DEMO_MIN_COUNT;
+      if (isDemoLive() && inferenceRunning) {
+        const demo = demoMetricsNow();
+        frameData = {
+          ...(frameData || {}),
+          detections,
+          metrics: {
+            ...(frameData?.metrics || {}),
+            ...demo,
+            ...(isFaceTab
+              ? { recognitionActive: true }
+              : { presenceActive: true }),
+          },
+        };
+      } else {
+        frameData = {
+          ...(frameData || {}),
+          detections,
+          metrics: {
+            ...(frameData?.metrics || {}),
+            current: detections.length,
+            ...(isFaceTab
+              ? { recognitionActive: detections.length > 0 }
+              : { presenceActive: detections.length > 0 }),
+          },
+        };
       }
       updateStatsOnly();
     }
@@ -1288,10 +1312,33 @@
       }
     }
 
+    function refreshDemoMetricsDisplay() {
+      if (!isDemoLive() || !inferenceRunning) return;
+      updateStatsOnly();
+      const src = frameData?.payload || payload;
+      if (src && window.DetectionTab?.applyLiveMetricsFromPayload) {
+        window.DetectionTab.applyLiveMetricsFromPayload(src);
+      } else if (src && window.DetectionTab?.syncLiveMetrics) {
+        window.DetectionTab.syncLiveMetrics(src);
+      }
+    }
+
+    function startDemoMetricsTimer() {
+      stopDemoMetricsTimer();
+      if (!isDemoLive() || !inferenceRunning) return;
+      demoMetricsTimer = setInterval(refreshDemoMetricsDisplay, 1000);
+    }
+
+    function stopDemoMetricsTimer() {
+      if (demoMetricsTimer) clearInterval(demoMetricsTimer);
+      demoMetricsTimer = null;
+    }
+
     function startPolling() {
       stopPolling();
       pollFrame();
       const demo = isDemoLive() && inferenceRunning;
+      if (demo) startDemoMetricsTimer();
       const ms = demo
         ? 300
         : inferenceRunning
@@ -1303,6 +1350,7 @@
     function stopPolling() {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = null;
+      stopDemoMetricsTimer();
     }
 
     async function selectCamera(cameraId) {
