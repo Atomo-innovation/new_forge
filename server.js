@@ -651,7 +651,7 @@ app.post('/api/device/register', async (req, res) => {
     deviceSerial,
     deviceName,
     deviceType,
-    operatingSystem,
+    operatingSystem: bodyOperatingSystem,
     organizationName,
     adminName,
     adminRole,
@@ -667,11 +667,11 @@ app.post('/api/device/register', async (req, res) => {
 
   const serverless = isServerlessRuntime();
   const atomicPassword = sessRecord.password || bodyAtomicPassword || null;
+  const operatingSystem = String(bodyOperatingSystem || 'linux').trim().toLowerCase() || 'linux';
 
   const missing = [];
   if (!deviceName) missing.push('Device Name');
   if (!deviceType) missing.push('Device Type');
-  if (!operatingSystem) missing.push('Operating System');
   if (!organizationName) missing.push('Organization Name');
   if (!adminName) missing.push('Administrator Name');
   if (!adminRole) missing.push('Role / Designation');
@@ -716,7 +716,7 @@ app.post('/api/device/register', async (req, res) => {
     deviceSerial: serial,
     deviceName: String(deviceName).trim(),
     deviceType: String(deviceType).trim(),
-    operatingSystem: String(operatingSystem).trim(),
+    operatingSystem,
     organizationName: String(organizationName).trim(),
     adminName: String(adminName).trim(),
     adminRole: String(adminRole).trim(),

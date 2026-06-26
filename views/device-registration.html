@@ -63,12 +63,6 @@
             </select>
           </div>
         </div>
-
-        <div class="form-group">
-          <label for="operatingSystemDisplay">Operating System <span class="required-mark">*</span></label>
-          <input type="text" id="operatingSystemDisplay" value="Linux" readonly aria-readonly="true">
-          <input type="hidden" id="operatingSystem" name="operatingSystem" value="linux">
-        </div>
       </section>
 
       <!-- Organization Details -->
@@ -249,6 +243,7 @@
     let demoMode = false;
     let processingTimer = null;
     let stepTimer = null;
+    const DEFAULT_OPERATING_SYSTEM = 'linux';
 
     function cloudPortalSteps() {
       if (demoMode) {
@@ -412,7 +407,6 @@
           const p = data.profile;
           document.getElementById('deviceName').value = p.deviceName || '';
           document.getElementById('deviceType').value = p.deviceType || '';
-          document.getElementById('operatingSystem').value = 'linux';
           document.getElementById('organizationName').value = p.organizationName || '';
           document.getElementById('adminName').value = p.adminName || '';
           document.getElementById('adminRole').value = p.adminRole || '';
@@ -489,7 +483,7 @@
     }
 
     function needsDevicePassword() {
-      const os = document.getElementById('operatingSystem').value;
+      const os = DEFAULT_OPERATING_SYSTEM;
       return os === 'linux' || os === 'embedded' || os === 'macos';
     }
 
@@ -527,7 +521,7 @@
         deviceSerial: document.getElementById('deviceSerial').value.trim(),
         deviceName: document.getElementById('deviceName').value.trim(),
         deviceType: document.getElementById('deviceType').value,
-        operatingSystem: document.getElementById('operatingSystem').value,
+        operatingSystem: DEFAULT_OPERATING_SYSTEM,
         organizationName: document.getElementById('organizationName').value.trim(),
         adminName: document.getElementById('adminName').value.trim(),
         adminRole: document.getElementById('adminRole').value.trim(),
