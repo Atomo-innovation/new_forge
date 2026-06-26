@@ -750,9 +750,7 @@
           };
           updateStatsOnly();
         }
-        if (data.payload && window.DetectionTab?.setDetectionEventsVisible) {
-          window.DetectionTab.setDetectionEventsVisible(start, data.payload);
-        } else if (data.payload && window.DetectionTab?.syncLiveMetrics) {
+        if (start && data.payload && window.DetectionTab?.syncLiveMetrics) {
           window.DetectionTab.syncLiveMetrics(data.payload);
         }
       } catch (err) {
@@ -1367,9 +1365,7 @@
       if (demoVideoReady) {
         preloadDemoVideos();
         setDemoVideoMode(false, frameData.preview?.label);
-        if (payload && window.DetectionTab?.setDetectionEventsVisible) {
-          window.DetectionTab.setDetectionEventsVisible(false, payload);
-        } else if (payload && window.DetectionTab?.syncLiveMetrics) {
+        if (payload && window.DetectionTab?.syncLiveMetrics) {
           window.DetectionTab.syncLiveMetrics(payload);
         }
         return;
@@ -1452,7 +1448,6 @@
       getSelectedCameraId,
       initFromPayload,
       refresh: pollFrame,
-      isInferenceRunning: () => inferenceRunning,
     };
 
     document.addEventListener('DOMContentLoaded', () => {
