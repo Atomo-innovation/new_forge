@@ -186,7 +186,7 @@
       const tooManyOn = Boolean(state.alerts?.['too-many-people']);
       const streamMode = frameData?.streamMode || state.streamMode || 'preview';
       const backendConnected = Boolean(frameData?.backendConnected);
-      const running = inferenceRunning || state.inferenceRunning;
+      const running = isDemoLive() ? inferenceRunning : (inferenceRunning || state.inferenceRunning);
 
       const modeLabel = running
         ? backendConnected
@@ -328,7 +328,9 @@
         initStreamDisplay();
       }
       hideStreamOverlay();
-      startPolling();
+      if (inferenceRunning || !isDemoLive()) {
+        startPolling();
+      }
     }
 
     function reattachStream(mediaStream, pc) {
@@ -575,9 +577,15 @@
     }
 
     function wireControls() {
-      document.getElementById('pliveInferenceBtn')?.addEventListener('click', toggleInference);
+      const inferenceBtn = document.getElementById('pliveInferenceBtn');
+      if (inferenceBtn && inferenceBtn.dataset.bound !== 'true') {
+        inferenceBtn.dataset.bound = 'true';
+        inferenceBtn.addEventListener('click', toggleInference);
+      }
 
       document.querySelectorAll('[data-feature-id]').forEach((el) => {
+        if (el.dataset.bound === 'true') return;
+        el.dataset.bound = 'true';
         el.addEventListener('change', () => {
           syncToolbarUi();
           saveConfig({ features: collectFeatures() });
@@ -585,6 +593,8 @@
       });
 
       document.querySelectorAll('[data-alert-id]').forEach((el) => {
+        if (el.dataset.bound === 'true') return;
+        el.dataset.bound = 'true';
         el.addEventListener('change', () => {
           syncToolbarUi();
           saveConfig({ alerts: collectAlerts() });
@@ -660,6 +670,19 @@
           await pollFrame();
         } else if (isDemoLive()) {
           stopPolling();
+          frameData = {
+            ...(frameData || {}),
+            metrics: {
+              ...(frameData?.metrics || {}),
+              current: 0,
+              peakToday: DEMO_PEAK_COUNT,
+              fps: null,
+              inferenceMs: null,
+              presenceActive: false,
+              recognitionActive: false,
+            },
+          };
+          updateStatsOnly();
         }
         if (start && window.DetectionTab?.syncLivePayload && data.payload) {
           window.DetectionTab.syncLivePayload(data.payload);
@@ -1133,11 +1156,19 @@
 
     async function pollFrame() {
       if (!selectedCameraId) return;
+      if (isDemoLive() && !inferenceRunning) return;
       try {
         const res = await fetch(sessionUrl(liveApiPath('frame')));
         if (!res.ok) return;
         frameData = await res.json();
-        inferenceRunning = Boolean(frameData.inferenceRunning);
+        if (isDemoLive()) {
+          frameData.inferenceRunning = inferenceRunning;
+          if (frameData.preview) {
+            swapDemoVideo(frameData.preview);
+          }
+        } else {
+          inferenceRunning = Boolean(frameData.inferenceRunning);
+        }
         if (frameData.payload) {
           payload = frameData.payload;
           if (document.activeElement?.id !== 'pliveConfRange') {
@@ -1315,19 +1346,12 @@
       if (activeId) {
         if (activeId === selectedCameraId && streamInitialized) {
           mount(true);
-          if (demoMode && detPayload?.state?.inferenceRunning) {
-            inferenceRunning = true;
-            startPolling();
-            await pollFrame();
-          }
           return;
         }
-        await selectCamera(activeId);
-        if (demoMode && detPayload?.state?.inferenceRunning) {
-          inferenceRunning = true;
-          startPolling();
-          await pollFrame();
+        if (demoMode) {
+          inferenceRunning = false;
         }
+        await selectCamera(activeId);
         return;
       }
 
