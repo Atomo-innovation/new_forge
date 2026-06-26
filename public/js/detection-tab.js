@@ -15,6 +15,14 @@ const DEMO_EVENT_IMAGES = [
   '/demo/new5.png',
 ];
 let demoImageLoopTimers = [];
+let demoEventTickTimer = null;
+let demoEventTickSeq = 0;
+
+const DEMO_TICK_TITLES = {
+  person: ['Person Detected', 'Presence Detected', 'Person Detected', 'Person Detected'],
+  face: ['Face Detected', 'Known Face Match', 'Unknown Face', 'Face Detected'],
+};
+const DEMO_TICK_SEVERITIES = ['warning', 'success', 'warning', 'success'];
 
 function isDemoImageCycleEnabled() {
   return document.body.classList.contains('demo-mode')
@@ -653,7 +661,9 @@ function renderEventsCard() {
         <div class="ov-merged-divider" aria-hidden="true"></div>
 
         <div class="ov-det-events-body" id="detEvents">
-          <div id="detEventsGalleryHost">${renderEventCards(getFilteredEvents())}</div>
+          <div class="ov-det-events-scroll" id="detEventsScroll">
+            <div id="detEventsGalleryHost">${renderEventCards(getFilteredEvents())}</div>
+          </div>
           ${renderEventsLightbox()}
         </div>
       </div>
@@ -986,7 +996,70 @@ async function loadDetectionTab() {
   }
 }
 
+function stopDemoEventTicker() {
+  if (demoEventTickTimer) {
+    clearInterval(demoEventTickTimer);
+    demoEventTickTimer = null;
+  }
+}
+
+function buildDemoTickEvent() {
+  demoEventTickSeq += 1;
+  const titles = isFaceTab ? DEMO_TICK_TITLES.face : DEMO_TICK_TITLES.person;
+  const title = titles[demoEventTickSeq % titles.length];
+  const severity = DEMO_TICK_SEVERITIES[demoEventTickSeq % DEMO_TICK_SEVERITIES.length];
+  const camera = payload?.assignedCameras?.[0] || {
+    name: 'Demo Camera — Gate A',
+    location: 'Demo site',
+    zoneFloor: 'Perimeter',
+  };
+  const now = new Date();
+  const imageUrl = pickRandomDemoImage();
+  return {
+    id: `demo-live-${slug}-${Date.now()}-${demoEventTickSeq}`,
+    title,
+    eventType: title,
+    label: isFaceTab ? 'face' : 'person',
+    camera: camera.name,
+    location: camera.location || 'Demo site',
+    zone: camera.zoneFloor || 'Perimeter',
+    severity,
+    confidence: Math.min(0.97, 0.76 + (demoEventTickSeq % 5) * 0.04),
+    imageUrl,
+    demoImageCycle: true,
+    hasSnapshot: true,
+    bbox: null,
+    time: now.toISOString(),
+    timeLabel: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    dateLabel: now.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+  };
+}
+
+function tickDemoEvent() {
+  if (!isDetectionActive() || !isDemoImageCycleEnabled()) return;
+  const evt = buildDemoTickEvent();
+  if (payload) {
+    const eventsToday = (payload.report?.eventsToday ?? payload.events?.length ?? 0) + 1;
+    payload = {
+      ...payload,
+      report: { ...(payload.report || {}), eventsToday },
+    };
+    const metricEl = document.querySelector('.ov-det-metrics-strip .ov-det-metric-val:nth-child(3)');
+    if (metricEl) metricEl.textContent = String(eventsToday);
+  }
+  prependEvents([evt]);
+}
+
+function startDemoEventTicker() {
+  stopDemoEventTicker();
+  if (!isDetectionActive() || !isDemoImageCycleEnabled()) return;
+  demoEventTickSeq = 0;
+  tickDemoEvent();
+  demoEventTickTimer = setInterval(tickDemoEvent, 1000);
+}
+
 function clearEventsGallery() {
+  stopDemoEventTicker();
   stopDemoEventImageLoops();
   if (payload) {
     payload = {
@@ -1006,11 +1079,13 @@ function setDetectionEventsVisible(visible, nextPayload) {
     payload = { ...payload, ...nextPayload, events: visible ? (nextPayload.events || []) : [] };
   }
   if (!visible) {
+    stopDemoEventTicker();
     clearEventsGallery();
     if (nextPayload) applyLiveMetricsFromPayload(nextPayload);
     return;
   }
   refreshEventsGallery(true);
+  startDemoEventTicker();
   if (nextPayload) applyLiveMetricsFromPayload(nextPayload);
 }
 
@@ -1048,11 +1123,14 @@ function prependEvents(newEvents, nextPayload) {
   }
   updateEventCountLabel();
   wireGalleryEvents();
+  const scroll = document.getElementById('detEventsScroll');
+  if (scroll) scroll.scrollTop = 0;
 }
 
 function refreshEventsOnly(nextPayload) {
   if (!nextPayload) return;
   if (!isDetectionActive(nextPayload)) {
+    stopDemoEventTicker();
     payload = { ...payload, ...nextPayload, events: [] };
     clearEventsGallery();
     applyLiveMetricsFromPayload(nextPayload);
