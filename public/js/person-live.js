@@ -350,7 +350,8 @@
 
       const meta = document.getElementById('pliveStreamMeta');
       if (meta) {
-        meta.textContent = label || (detecting ? 'Live AI detection' : 'Live preview');
+        meta.textContent = '';
+        meta.hidden = true;
       }
       streamInitialized = true;
       streamLocked = true;
