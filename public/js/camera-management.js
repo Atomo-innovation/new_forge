@@ -63,6 +63,13 @@ function showToast(msg) {
   setTimeout(() => el.classList.remove('show'), 2600);
 }
 
+function hideToast() {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = '';
+  el.classList.remove('show');
+}
+
 function typeLabel(type) {
   return CAMERA_SOURCES.find((s) => s.id === type)?.label || type;
 }
@@ -110,6 +117,7 @@ function clearFieldValidation() {
 function validateRequiredFields() {
   clearFieldValidation();
   let valid = true;
+  let firstInvalid = null;
   for (const id of getRequiredFieldIds()) {
     const el = document.getElementById(id);
     const wrap = el?.closest('.ov-cam-field');
@@ -117,8 +125,10 @@ function validateRequiredFields() {
     if (empty) {
       valid = false;
       wrap?.classList.add('is-invalid');
+      if (!firstInvalid) firstInvalid = el;
     }
   }
+  if (firstInvalid) firstInvalid.focus();
   return valid;
 }
 
@@ -250,7 +260,7 @@ function renderAddForm() {
         <div class="ov-info-title">Identity</div>
         <div class="ov-cam-field">
           <label for="camName">Camera name <span class="req">*</span></label>
-          <input id="camName" name="name" type="text" placeholder="e.g. North Gate — Entrance" required>
+          <input id="camName" name="name" type="text" placeholder="e.g. North Gate — Entrance">
         </div>
         <div class="ov-cam-field">
           <label for="camType">Camera type <span class="req">*</span></label>
@@ -277,17 +287,17 @@ function renderAddForm() {
         <div class="ov-cam-field-row">
           <div class="ov-cam-field">
             <label for="camLocation">Location <span class="req">*</span></label>
-            <input id="camLocation" name="location" type="text" placeholder="Building A — Main entrance" required>
+            <input id="camLocation" name="location" type="text" placeholder="Building A — Main entrance">
           </div>
           <div class="ov-cam-field">
             <label for="camZone">Zone / Floor <span class="req">*</span></label>
-            <input id="camZone" name="zoneFloor" type="text" placeholder="Ground floor" required>
+            <input id="camZone" name="zoneFloor" type="text" placeholder="Ground floor">
           </div>
         </div>
         <div class="ov-cam-field-row">
           <div class="ov-cam-field">
             <label for="camDepartment">Department <span class="req">*</span></label>
-            <input id="camDepartment" name="department" type="text" placeholder="Security" required>
+            <input id="camDepartment" name="department" type="text" placeholder="Security">
           </div>
           <div class="ov-cam-field">
             <label for="camGroup">Camera group</label>
@@ -617,7 +627,7 @@ async function loadCameras() {
 async function testStream() {
   if (isTesting) return;
   if (!validateRequiredFields()) {
-    showToast('Please fill in all required fields marked with *');
+    hideToast();
     return;
   }
   isTesting = true;
@@ -660,7 +670,7 @@ async function testStream() {
 
 async function saveCamera() {
   if (!validateRequiredFields()) {
-    showToast('Please fill in all required fields marked with *');
+    hideToast();
     return;
   }
   if (!lastValidation?.success) {

@@ -370,16 +370,16 @@
       }
 
       let valid = true;
+      let firstInvalid = null;
       for (const field of required) {
         const el = document.getElementById(field.id);
-        if (!el || !field.check(el)) {
+        if (!el || field.check(el)) {
           valid = false;
           el?.closest('.form-group')?.classList.add('is-invalid');
+          if (!firstInvalid) firstInvalid = el;
         }
       }
-      if (!valid) {
-        showAlert('Please fill in all required fields marked with *.');
-      }
+      if (firstInvalid) firstInvalid.focus();
       return valid;
     }
 
@@ -690,7 +690,10 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!validateRegistrationForm()) return;
+      if (!validateRegistrationForm()) {
+        hideAlert();
+        return;
+      }
       if (needsCredentialsModal()) {
         showPasswordModal();
         return;

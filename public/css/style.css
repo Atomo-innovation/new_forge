@@ -680,6 +680,10 @@ body {
 }
 
 .required-mark {
+  color: var(--text-muted);
+}
+
+.form-group.is-invalid .required-mark {
   color: var(--error);
 }
 
