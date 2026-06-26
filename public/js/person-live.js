@@ -278,7 +278,25 @@
     }
 
     function isVideoFilePreview(preview) {
+      if (isDemoLive() && preview?.mode === 'video' && !preview.simulated) return true;
       return preview?.mode === 'video' && preview.url && !preview.simulated;
+    }
+
+    function setStreamMeta(label, detecting) {
+      const meta = document.getElementById('pliveStreamMeta');
+      if (!meta) return;
+      if (isDemoLive()) {
+        meta.textContent = '';
+        meta.hidden = true;
+        return;
+      }
+      meta.hidden = false;
+      const text = String(label || '').trim();
+      if (!text || /\.(mp4|webm|ogg)(\?|$)/i.test(text) || text.startsWith('/demo/')) {
+        meta.textContent = detecting ? 'Live AI detection' : 'Live preview';
+        return;
+      }
+      meta.textContent = text;
     }
 
     function preloadDemoVideos() {
@@ -349,9 +367,7 @@
       }
 
       const meta = document.getElementById('pliveStreamMeta');
-      if (meta) {
-        meta.textContent = label || (detecting ? 'Live AI detection' : 'Live preview');
-      }
+      setStreamMeta(label, detecting);
       streamInitialized = true;
       streamLocked = true;
     }
@@ -1041,9 +1057,9 @@
       }
 
       if (isVideoFilePreview(preview) && isDemoLive()) {
-        const detecting = preview.url === DEMO_DETECTION_VIDEO
-          || inferenceRunning
-          || demoVideoMode === 'detection';
+        const detecting = inferenceRunning
+          || demoVideoMode === 'detection'
+          || preview.demoPhase === 'detection';
         setDemoVideoMode(detecting, preview.label);
         return;
       }
@@ -1127,7 +1143,8 @@
 
       if (preview.mode === 'video' && preview.url && !preview.simulated) {
         if (isDemoLive()) {
-          const detecting = preview.url === DEMO_DETECTION_VIDEO || inferenceRunning;
+          const detecting = inferenceRunning
+            || preview.demoPhase === 'detection';
           setDemoVideoMode(detecting, preview.label);
           return;
         }
@@ -1145,8 +1162,7 @@
         video.setAttribute('webkit-playsinline', '');
         video.dataset.demoVideo = preview.url;
         host.insertBefore(video, host.firstChild);
-        const meta = document.getElementById('pliveStreamMeta');
-        if (meta) meta.textContent = preview.label || 'Demo video stream';
+        setStreamMeta(preview.label, false);
         streamInitialized = true;
         streamLocked = true;
         usingHlsStream = false;
