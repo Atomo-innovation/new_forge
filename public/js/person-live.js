@@ -10,8 +10,8 @@
 
     const DEMO_PEAK_COUNT = 5;
     const DEMO_MIN_COUNT = 3;
-    const DEMO_PREVIEW_VIDEO = '/demo/office.mp4';
-    const DEMO_DETECTION_VIDEO = '/demo/new.mp4';
+    const DEMO_PREVIEW_VIDEO = '/demo/wnew23.mp4';
+    const DEMO_DETECTION_VIDEO = '/demo/dnew12.mp4';
     let demoVideoPreloaded = false;
     let demoVideoMode = null;
 

@@ -21,7 +21,7 @@ const DEFAULT_CONFIDENCE = 0.7;
 const CONFIDENCE_MIN = 25;
 const CONFIDENCE_MAX = 95;
 const DEMO_CAMERA_ID = 'demo-cam-1';
-const DEMO_DETECTION_VIDEO = '/demo/new.mp4';
+const DEMO_DETECTION_VIDEO = '/demo/dnew12.mp4';
 
 let confSaveTimer = null;
 
