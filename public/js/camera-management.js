@@ -88,6 +88,40 @@ function selectedValues(id) {
   return Array.from(el.selectedOptions).map((o) => o.value);
 }
 
+const PLACEMENT_REQUIRED_IDS = ['camLocation', 'camZone', 'camDepartment'];
+
+function streamUrlRequired(type) {
+  return ['rtsp', 'onvif', 'ip', 'http', 'video-file', 'image-folder', 'usb'].includes(type);
+}
+
+function getRequiredFieldIds() {
+  const type = formValue('camType');
+  const ids = ['camName', 'camType', ...PLACEMENT_REQUIRED_IDS];
+  if (streamUrlRequired(type)) ids.push('camRtspUrl');
+  return ids;
+}
+
+function clearFieldValidation() {
+  document.querySelectorAll('.ov-cam-field.is-invalid').forEach((el) => {
+    el.classList.remove('is-invalid');
+  });
+}
+
+function validateRequiredFields() {
+  clearFieldValidation();
+  let valid = true;
+  for (const id of getRequiredFieldIds()) {
+    const el = document.getElementById(id);
+    const wrap = el?.closest('.ov-cam-field');
+    const empty = !String(formValue(id) || '').trim();
+    if (empty) {
+      valid = false;
+      wrap?.classList.add('is-invalid');
+    }
+  }
+  return valid;
+}
+
 function getFormPayload() {
   return {
     name: formValue('camName'),
@@ -228,8 +262,8 @@ function renderAddForm() {
 
       <div class="ov-cam-form-section">
         <div class="ov-info-title">Connection</div>
-        <div class="ov-cam-field">
-          <label for="camRtspUrl">Stream URL / path</label>
+        <div class="ov-cam-field" id="camRtspUrlField">
+          <label for="camRtspUrl">Stream URL / path <span class="req req-stream">*</span></label>
           <input id="camRtspUrl" name="rtspUrl" type="text" placeholder="rtsp://192.168.1.50:554/stream1">
         </div>
         <label class="ov-cam-check-inline" id="camMipiWrap" hidden>
@@ -242,18 +276,18 @@ function renderAddForm() {
         <div class="ov-info-title">Placement</div>
         <div class="ov-cam-field-row">
           <div class="ov-cam-field">
-            <label for="camLocation">Location</label>
-            <input id="camLocation" name="location" type="text" placeholder="Building A — Main entrance">
+            <label for="camLocation">Location <span class="req">*</span></label>
+            <input id="camLocation" name="location" type="text" placeholder="Building A — Main entrance" required>
           </div>
           <div class="ov-cam-field">
-            <label for="camZone">Zone / Floor</label>
-            <input id="camZone" name="zoneFloor" type="text" placeholder="Ground floor">
+            <label for="camZone">Zone / Floor <span class="req">*</span></label>
+            <input id="camZone" name="zoneFloor" type="text" placeholder="Ground floor" required>
           </div>
         </div>
         <div class="ov-cam-field-row">
           <div class="ov-cam-field">
-            <label for="camDepartment">Department</label>
-            <input id="camDepartment" name="department" type="text" placeholder="Security">
+            <label for="camDepartment">Department <span class="req">*</span></label>
+            <input id="camDepartment" name="department" type="text" placeholder="Security" required>
           </div>
           <div class="ov-cam-field">
             <label for="camGroup">Camera group</label>
@@ -408,6 +442,12 @@ function syncTypeFields() {
   };
   urlField.placeholder = placeholders[type] || 'Stream address';
 
+  const streamRequired = streamUrlRequired(type);
+  const streamField = document.getElementById('camRtspUrlField');
+  const streamReq = document.querySelector('#camRtspUrlField .req-stream');
+  if (streamField) streamField.classList.toggle('is-required', streamRequired);
+  if (streamReq) streamReq.hidden = !streamRequired;
+
   document.querySelectorAll('.ov-cam-source-chip').forEach((chip) => {
     chip.classList.toggle('active', chip.dataset.type === type);
   });
@@ -466,6 +506,15 @@ function wireModalEvents() {
   document.getElementById('camTestBtn')?.addEventListener('click', testStream);
   document.getElementById('camResetBtn')?.addEventListener('click', resetForm);
   document.getElementById('camSaveBtn')?.addEventListener('click', saveCamera);
+
+  document.querySelectorAll('#camAddForm input, #camAddForm select').forEach((input) => {
+    input.addEventListener('input', () => {
+      input.closest('.ov-cam-field')?.classList.remove('is-invalid');
+    });
+    input.addEventListener('change', () => {
+      input.closest('.ov-cam-field')?.classList.remove('is-invalid');
+    });
+  });
 }
 
 function onModalKeydown(e) {
@@ -486,6 +535,7 @@ function openAddModal() {
   modalOpen = true;
   lastValidation = null;
   mountModal();
+  clearFieldValidation();
   preselectDetectionModel();
   document.body.classList.add('ov-modal-open');
   document.getElementById('camName')?.focus();
@@ -512,6 +562,7 @@ function updateValidationPanel() {
 }
 
 function resetForm() {
+  clearFieldValidation();
   document.getElementById('camAddForm')?.reset();
   const fps = document.getElementById('camFps');
   const res = document.getElementById('camResolution');
@@ -565,6 +616,10 @@ async function loadCameras() {
 
 async function testStream() {
   if (isTesting) return;
+  if (!validateRequiredFields()) {
+    showToast('Please fill in all required fields marked with *');
+    return;
+  }
   isTesting = true;
   lastValidation = null;
 
@@ -604,6 +659,10 @@ async function testStream() {
 }
 
 async function saveCamera() {
+  if (!validateRequiredFields()) {
+    showToast('Please fill in all required fields marked with *');
+    return;
+  }
   if (!lastValidation?.success) {
     showToast('Test the stream before saving');
     return;

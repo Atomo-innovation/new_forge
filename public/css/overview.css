@@ -2488,6 +2488,21 @@ body.ov-modal-open {
   text-align: right;
 }
 
+.ov-cam-details-grid span.is-missing {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.ov-cam-details-grid .req {
+  color: var(--color-error);
+}
+
+.ov-cam-detail-empty {
+  color: var(--color-error) !important;
+  font-weight: 600;
+  font-style: italic;
+}
+
 .ov-cam-view-analytics {
   flex: 1 1 auto;
 }
@@ -2678,6 +2693,28 @@ body.ov-modal-open {
 
 .ov-cam-field .req {
   color: var(--color-error);
+}
+
+.ov-cam-field.is-required .req-stream {
+  display: inline;
+}
+
+.ov-cam-field:not(.is-required) .req-stream {
+  display: none;
+}
+
+.ov-cam-field.is-invalid label {
+  color: var(--color-error);
+}
+
+.ov-cam-field.is-invalid .req {
+  color: var(--color-error);
+}
+
+.ov-cam-field.is-invalid input,
+.ov-cam-field.is-invalid select {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 18%, transparent);
 }
 
 .ov-cam-field input,

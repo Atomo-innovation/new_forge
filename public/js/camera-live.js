@@ -247,6 +247,16 @@ function renderAnalyticsGrid(analytics) {
     .join('');
 }
 
+function renderDetailRow(label, value, required = false, mono = false) {
+  const empty = !String(value ?? '').trim();
+  const reqMark = required && empty ? ' <span class="req">*</span>' : '';
+  const labelClass = required && empty ? ' is-missing' : '';
+  const valueHtml = empty
+    ? `<strong class="ov-cam-detail-empty">${required ? 'Required' : '—'}</strong>`
+    : `<strong class="${mono ? 'ov-mono' : ''}">${esc(value)}</strong>`;
+  return `<span class="${labelClass.trim()}">${label}${reqMark}</span>${valueHtml}`;
+}
+
 function renderLivePage() {
   const cam = viewPayload?.camera;
   const analytics = viewPayload?.analytics;
@@ -282,12 +292,12 @@ function renderLivePage() {
           <div class="ov-cam-view-section ov-cam-live-panel">
             <div class="ov-stat-headline">Camera details</div>
             <div class="ov-cam-details-grid ov-cam-details-grid-live">
-              <span>Location</span><strong>${esc(cam.location || '—')}</strong>
-              <span>Zone / floor</span><strong>${esc(cam.zoneFloor || '—')}</strong>
-              <span>Department</span><strong>${esc(cam.department || '—')}</strong>
-              <span>Group</span><strong>${esc(cam.group || '—')}</strong>
-              <span>Resolution</span><strong class="ov-mono">${esc(cam.resolution || '—')}</strong>
-              <span>FPS limit</span><strong class="ov-mono">${cam.fpsLimit || '—'}</strong>
+              ${renderDetailRow('Location', cam.location, true)}
+              ${renderDetailRow('Zone / floor', cam.zoneFloor, true)}
+              ${renderDetailRow('Department', cam.department, true)}
+              ${renderDetailRow('Group', cam.group)}
+              ${renderDetailRow('Resolution', cam.resolution, false, true)}
+              ${renderDetailRow('FPS limit', cam.fpsLimit, false, true)}
             </div>
           </div>` : ''}
           <div class="ov-cam-view-section ov-cam-live-panel">

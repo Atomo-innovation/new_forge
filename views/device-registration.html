@@ -347,8 +347,53 @@
       document.getElementById('meshGroupName').required = enabled;
     }
 
+    function clearRegistrationValidation() {
+      form.querySelectorAll('.form-group.is-invalid').forEach((el) => {
+        el.classList.remove('is-invalid');
+      });
+    }
+
+    function validateRegistrationForm() {
+      clearRegistrationValidation();
+      const required = [
+        { id: 'deviceSerial', check: (el) => !el.value.trim() },
+        { id: 'deviceName', check: (el) => !el.value.trim() },
+        { id: 'deviceType', check: (el) => !el.value },
+        { id: 'organizationName', check: (el) => !el.value.trim() },
+        { id: 'adminName', check: (el) => !el.value.trim() },
+        { id: 'adminRole', check: (el) => !el.value.trim() },
+        { id: 'country', check: (el) => !el.value },
+        { id: 'city', check: (el) => !el.value.trim() },
+      ];
+      if (registerMeshCentral.checked) {
+        required.push({ id: 'meshGroupName', check: (el) => !el.value.trim() });
+      }
+
+      let valid = true;
+      for (const field of required) {
+        const el = document.getElementById(field.id);
+        if (!el || !field.check(el)) {
+          valid = false;
+          el?.closest('.form-group')?.classList.add('is-invalid');
+        }
+      }
+      if (!valid) {
+        showAlert('Please fill in all required fields marked with *.');
+      }
+      return valid;
+    }
+
     registerMeshCentral.addEventListener('change', toggleMeshGroup);
     toggleMeshGroup();
+
+    form.querySelectorAll('input, select').forEach((input) => {
+      input.addEventListener('input', () => {
+        input.closest('.form-group')?.classList.remove('is-invalid');
+      });
+      input.addEventListener('change', () => {
+        input.closest('.form-group')?.classList.remove('is-invalid');
+      });
+    });
 
     async function ensureAuthenticated() {
       try {
@@ -645,6 +690,7 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!validateRegistrationForm()) return;
       if (needsCredentialsModal()) {
         showPasswordModal();
         return;
