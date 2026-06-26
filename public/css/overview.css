@@ -25,27 +25,45 @@
   --ov-sidebar: 248px;
   --ov-offline-tint: rgba(193, 102, 107, 0.08);
   --ov-critical-border: rgba(193, 102, 107, 0.22);
+  --color-media-bg: #0f172a;
+  --color-overlay-dark: rgba(15, 23, 42, 0.72);
+  --color-overlay-medium: rgba(15, 23, 42, 0.55);
+  --color-overlay-strong: rgba(15, 23, 42, 0.75);
+  --color-modal-shadow: rgba(15, 23, 42, 0.28);
+  --color-log-text: #cbd5e1;
 }
 
 [data-theme='dark'] {
-  --color-bg: #1a1f1c;
-  --color-surface: #242b27;
-  --color-surface-muted: #2d3530;
-  --color-border: rgba(163, 177, 138, 0.12);
-  --color-accent: #a3b18a;
-  --color-accent-muted: rgba(163, 177, 138, 0.14);
-  --color-accent-sage: #588157;
-  --color-accent-sage-muted: rgba(88, 129, 87, 0.2);
-  --color-text-primary: #f2f2ee;
-  --color-text-secondary: #b8bdb5;
-  --color-text-muted: #8a9189;
-  --color-success: #7cb87a;
-  --color-warning: #e0b07a;
-  --color-error: #e08a8f;
-  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.35);
-  --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.2);
-  --ov-offline-tint: rgba(224, 138, 143, 0.1);
-  --ov-critical-border: rgba(224, 138, 143, 0.3);
+  --color-bg: #131316;
+  --color-surface: #1c1c20;
+  --color-surface-muted: #26262b;
+  --color-border: rgba(255, 255, 255, 0.085);
+  --color-accent: #c8ccd4;
+  --color-accent-muted: rgba(200, 204, 212, 0.12);
+  --color-accent-sage: #9aa3af;
+  --color-accent-sage-muted: rgba(154, 163, 175, 0.14);
+  --color-text-primary: #ececee;
+  --color-text-secondary: #a8a8ae;
+  --color-text-muted: #6e6e75;
+  --color-success: #6fbf8a;
+  --color-warning: #d4a06a;
+  --color-error: #d97b82;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.42);
+  --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.26);
+  --ov-offline-tint: rgba(217, 123, 130, 0.09);
+  --ov-critical-border: rgba(217, 123, 130, 0.26);
+  --color-media-bg: #18181c;
+  --color-overlay-dark: rgba(24, 24, 28, 0.82);
+  --color-overlay-medium: rgba(24, 24, 28, 0.62);
+  --color-overlay-strong: rgba(24, 24, 28, 0.86);
+  --color-modal-shadow: rgba(0, 0, 0, 0.38);
+  --color-log-text: #b0b0b8;
+}
+
+[data-theme='dark'] .ov-det-preview-sim {
+  background:
+    linear-gradient(180deg, rgba(24, 24, 28, 0.2), rgba(24, 24, 28, 0.75)),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.03) 2px, rgba(255, 255, 255, 0.03) 4px);
 }
 
 *,
@@ -3399,7 +3417,7 @@ body.ov-modal-open {
   width: 100%;
   height: 100%;
   min-height: 88px;
-  background: #0f172a;
+  background: var(--color-media-bg);
   overflow: hidden;
 }
 
@@ -3429,7 +3447,7 @@ body.ov-modal-open {
 .ov-det-event-conf {
   padding: 3px 8px;
   border-radius: var(--radius-pill);
-  background: rgba(15, 23, 42, 0.72);
+  background: var(--color-overlay-dark);
   color: #f8fafc;
   font-size: 11px;
   font-weight: 600;
@@ -3441,7 +3459,7 @@ body.ov-modal-open {
   right: 10px;
   padding: 3px 8px;
   border-radius: var(--radius-pill);
-  background: rgba(15, 23, 42, 0.72);
+  background: var(--color-overlay-dark);
   color: #e2e8f0;
   font-size: 11px;
   font-weight: 600;
@@ -3567,7 +3585,7 @@ body.ov-modal-open {
 .ov-det-event-lightbox-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--color-overlay-medium);
   backdrop-filter: blur(4px);
 }
 
@@ -3579,7 +3597,7 @@ body.ov-modal-open {
   border-radius: var(--radius-xl);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  box-shadow: 0 24px 60px var(--color-modal-shadow);
 }
 
 .ov-det-event-lightbox-close {
@@ -3590,7 +3608,7 @@ body.ov-modal-open {
 }
 
 .ov-det-event-lightbox-media {
-  background: #0f172a;
+  background: var(--color-media-bg);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -4233,7 +4251,7 @@ body.ov-modal-open {
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  background: #0f172a;
+  background: var(--color-media-bg);
 }
 
 .ov-plive-stream {
@@ -4275,7 +4293,7 @@ body.ov-modal-open {
   left: 12px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.75);
+  background: var(--color-overlay-strong);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -4293,8 +4311,8 @@ body.ov-modal-open {
   max-width: 55%;
   padding: 6px 10px;
   border-radius: var(--radius-md);
-  background: rgba(15, 23, 42, 0.75);
-  color: #cbd5e1;
+  background: var(--color-overlay-strong);
+  color: var(--color-log-text);
   font-size: 11px;
   text-align: right;
 }
@@ -4332,7 +4350,7 @@ body.ov-modal-open {
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  background: #0f172a;
+  background: var(--color-media-bg);
 }
 
 .ov-det-preview-sim {
@@ -4457,12 +4475,12 @@ body.ov-modal-open {
   padding: 12px 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: #0f172a;
+  background: var(--color-media-bg);
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 11px;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: var(--color-log-text);
 }
 
 .ov-det-log-line + .ov-det-log-line {
