@@ -396,7 +396,15 @@ function eventSearchText(event) {
     .toLowerCase();
 }
 
+function isDetectionActive(source = payload) {
+  if (isLiveTab && typeof window.PersonLive?.isInferenceRunning === 'function') {
+    return window.PersonLive.isInferenceRunning();
+  }
+  return source?.state?.inferenceRunning === true;
+}
+
 function getFilteredEvents() {
+  if (!isDetectionActive()) return [];
   const events = payload?.events || [];
   const q = eventSearchQuery.trim().toLowerCase();
   if (!q) return events;
@@ -511,6 +519,7 @@ function refreshEventsGallery(force = false) {
   const fp = eventsFingerprint(events);
   if (!force && fp === lastEventsFingerprint) return;
   lastEventsFingerprint = fp;
+  if (!events.length) stopDemoEventImageLoops();
   host.innerHTML = renderEventCards(events);
   updateEventCountLabel();
   wireGalleryEvents();
@@ -622,7 +631,7 @@ function renderReports() {
 }
 
 function renderEventsCard() {
-  const events = payload?.events || [];
+  const events = getFilteredEvents();
   const eventCountLabel = events.length
     ? `${events.length} recent detection event${events.length === 1 ? '' : 's'}`
     : 'No detection events yet';
@@ -977,8 +986,37 @@ async function loadDetectionTab() {
   }
 }
 
+function clearEventsGallery() {
+  stopDemoEventImageLoops();
+  if (payload) {
+    payload = {
+      ...payload,
+      events: [],
+      report: { ...(payload.report || {}), eventsToday: 0 },
+    };
+  }
+  lastEventsFingerprint = eventsFingerprint([]);
+  const host = document.getElementById('detEventsGalleryHost');
+  if (host) host.innerHTML = renderEventCards([]);
+  updateEventCountLabel();
+}
+
+function setDetectionEventsVisible(visible, nextPayload) {
+  if (nextPayload) {
+    payload = { ...payload, ...nextPayload, events: visible ? (nextPayload.events || []) : [] };
+  }
+  if (!visible) {
+    clearEventsGallery();
+    if (nextPayload) applyLiveMetricsFromPayload(nextPayload);
+    return;
+  }
+  refreshEventsGallery(true);
+  if (nextPayload) applyLiveMetricsFromPayload(nextPayload);
+}
+
 function prependEvents(newEvents, nextPayload) {
   if (!newEvents?.length) return;
+  if (!isDetectionActive(nextPayload || payload)) return;
   if (nextPayload) {
     payload = nextPayload;
   } else if (payload) {
@@ -1014,6 +1052,12 @@ function prependEvents(newEvents, nextPayload) {
 
 function refreshEventsOnly(nextPayload) {
   if (!nextPayload) return;
+  if (!isDetectionActive(nextPayload)) {
+    payload = { ...payload, ...nextPayload, events: [] };
+    clearEventsGallery();
+    applyLiveMetricsFromPayload(nextPayload);
+    return;
+  }
   const merged = mergeEventsMonotonic(payload?.events, nextPayload.events);
   const knownIds = new Set((payload?.events || []).map((e) => e.id));
   const fresh = merged.filter((e) => !knownIds.has(e.id));
@@ -1022,20 +1066,25 @@ function refreshEventsOnly(nextPayload) {
 
   if (fresh.length) {
     prependEvents(fresh, payload);
+    applyLiveMetricsFromPayload(nextPayload);
     return;
   }
 
-  lastEventsFingerprint = eventsFingerprint(merged);
+  refreshEventsGallery();
   applyLiveMetricsFromPayload(nextPayload);
 }
 
 function syncLiveMetrics(nextPayload) {
   if (!nextPayload) return;
+  const running = isDetectionActive(nextPayload);
   payload = {
     ...payload,
     ...nextPayload,
-    events: payload?.events?.length ? payload.events : (nextPayload.events || []),
+    events: running ? (nextPayload.events || payload?.events || []) : [],
   };
+  if (!running) {
+    clearEventsGallery();
+  }
   applyLiveMetricsFromPayload(nextPayload);
 }
 
@@ -1083,6 +1132,8 @@ window.DetectionTab = {
   refreshEventsOnly,
   prependEvents,
   syncLiveMetrics,
+  clearEventsGallery,
+  setDetectionEventsVisible,
   syncLivePayload(nextPayload) {
     refreshEventsOnly(nextPayload);
   },
