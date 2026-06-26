@@ -8,11 +8,14 @@ let dashEventWs = null;
 let dashWsConnected = false;
 let lastEventsFingerprint = '';
 const DEMO_EVENT_IMAGES = [
-  '/demo/new.png',
-  '/demo/new2.png',
-  '/demo/new3.png',
-  '/demo/new4.png',
-  '/demo/new5.png',
+  '/demo/i1.png',
+  '/demo/i2.png',
+  '/demo/i3.png',
+  '/demo/i4.png',
+  '/demo/i5.png',
+  '/demo/i6.png',
+  '/demo/i7.png',
+  '/demo/i8.png',
 ];
 let demoImageLoopTimers = [];
 let demoEventTickTimer = null;
