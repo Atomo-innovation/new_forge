@@ -665,19 +665,11 @@
       }
       if (note) {
         if (data?.backendError) note.textContent = data.backendError;
-        else if (data?.backendConnected) {
-          if (isFaceTab) {
-            note.textContent = 'Connected to vision backend — real-time face recognition active.';
-          } else if (data.workerSource === 'npu') {
-            note.textContent = 'Khadas NPU person detection active (YOLO26s).';
-          } else if (data.workerSource === 'local-cpu') {
-            note.textContent = 'CPU dev fallback active. On Khadas use NPU backend only.';
-          } else {
-            note.textContent = 'Connected to vision backend — real-time person inference active.';
-          }
+        else if (inferenceRunning && !data?.backendConnected) {
+          note.textContent = 'Worker not responding. Restart vision backend: cd Backend_Atomo_fordge && npm run restart';
+        } else {
+          note.textContent = '';
         }
-        else if (inferenceRunning) note.textContent = 'Worker not responding. Restart vision backend: cd Backend_Atomo_fordge && npm run restart';
-        else note.textContent = '';
       }
     }
 
