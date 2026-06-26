@@ -870,11 +870,11 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = opts.color || getVar('--ink');
-      ctx.font = `700 ${opts.size || 18}px Space Grotesk, sans-serif`;
+      ctx.font = `700 ${opts.size || 18}px Inter, sans-serif`;
       ctx.fillText(opts.text || '', x, y - (opts.sub ? 7 : 0));
       if (opts.sub) {
         ctx.fillStyle = opts.subColor || getVar('--ink-faint');
-        ctx.font = '600 9.5px IBM Plex Mono, monospace';
+        ctx.font = '600 9.5px Inter, sans-serif';
         ctx.fillText(opts.sub, x, y + 11);
       }
       ctx.restore();

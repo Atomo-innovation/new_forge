@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 /* ===========================================================
    ATOMO FORGE — ELECTRON COMMAND DECK
    Design language: industrial control-room / SCADA instrument
@@ -34,6 +36,7 @@
   --r-md: 12px;
   --r-sm: 8px;
   --r-pill: 999px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 :root[data-theme="light"] {
@@ -69,12 +72,12 @@ body {
   background: var(--bg);
   background-image: radial-gradient(circle at 14% -10%, var(--bg-soft), transparent 55%);
   color: var(--ink);
-  font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   font-size: 14.5px;
 }
 
-h1, h2, h3 { font-family: 'Space Grotesk', 'Inter', sans-serif; margin: 0; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: var(--font); margin: 0; letter-spacing: -0.01em; }
 
 a { color: inherit; }
 
@@ -134,8 +137,8 @@ button { font-family: inherit; cursor: pointer; }
 .brand-mark svg { width: 100%; height: 100%; }
 
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
-.brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.02em; }
-.brand-sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--ink-faint); letter-spacing: 0.08em; }
+.brand-name { font-family: var(--font); font-weight: 700; font-size: 0.92rem; letter-spacing: 0.02em; }
+.brand-sub { font-family: var(--font); font-size: 0.62rem; color: var(--ink-faint); letter-spacing: 0.08em; }
 
 .rail-nav { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; overflow-y: auto; }
 
@@ -173,7 +176,7 @@ button { font-family: inherit; cursor: pointer; }
   width: 32px; height: 32px; border-radius: var(--r-pill);
   display: flex; align-items: center; justify-content: center;
   background: var(--cyan-soft); color: var(--cyan);
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600;
+  font-family: var(--font); font-size: 0.72rem; font-weight: 600;
   flex-shrink: 0;
 }
 .operator-meta { display: flex; flex-direction: column; min-width: 0; }
@@ -206,7 +209,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .scope-id { display: flex; flex-direction: column; gap: 0.15rem; padding-right: 1.4rem; border-right: 1px solid var(--line); margin-right: 0.4rem; }
-.scope-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); }
+.scope-eyebrow { font-family: var(--font); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); }
 .scope-title { font-size: 1.28rem; font-weight: 600; white-space: nowrap; }
 
 .scope-readouts {
@@ -225,7 +228,7 @@ button { font-family: inherit; cursor: pointer; }
   min-width: 58px;
 }
 .readout-label { font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
-.readout-value { font-family: 'IBM Plex Mono', monospace; font-size: 0.92rem; font-weight: 600; color: var(--ink); }
+.readout-value { font-family: var(--font); font-size: 0.92rem; font-weight: 600; color: var(--ink); }
 
 .scope-actions { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 
@@ -278,7 +281,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .live-pill {
   display: inline-flex; align-items: center; gap: 0.4rem;
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--font); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--green);
   background: var(--green-soft);
   border-radius: var(--r-pill);
@@ -438,7 +441,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .gauge-tags { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; color: var(--ink-dim); }
 .gauge-tags li, .legend-row li, .kv-list li { display: flex; align-items: center; gap: 0.45rem; }
-.gauge-tags b, .legend-row b { margin-left: auto; color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+.gauge-tags b, .legend-row b { margin-left: auto; color: var(--ink); font-family: var(--font); font-weight: 600; }
 
 .tag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent, var(--ink-faint)); flex-shrink: 0; }
 
@@ -454,14 +457,14 @@ button { font-family: inherit; cursor: pointer; }
 .chip.is-live { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
 .crit-badge {
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 600;
+  font-family: var(--font); font-size: 0.68rem; font-weight: 600;
   color: var(--red); background: var(--red-soft);
   border-radius: var(--r-pill); padding: 0.28rem 0.55rem;
   white-space: nowrap;
 }
 
 .alert-figure { display: flex; align-items: baseline; gap: 0.4rem; margin: 0.2rem 0 0.7rem; }
-.alert-number { font-family: 'Space Grotesk', sans-serif; font-size: 2.4rem; font-weight: 700; line-height: 1; }
+.alert-number { font-family: var(--font); font-size: 2.4rem; font-weight: 700; line-height: 1; }
 .alert-unit { font-size: 0.78rem; color: var(--ink-faint); }
 
 .sparkline { display: flex; align-items: flex-end; gap: 4px; height: 38px; margin-bottom: 0.8rem; }
@@ -470,7 +473,7 @@ button { font-family: inherit; cursor: pointer; }
 .legend-row { list-style: none; margin: 0; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--ink-dim); }
 
 .sync-chip {
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 600;
+  font-family: var(--font); font-size: 0.68rem; font-weight: 600;
   padding: 0.28rem 0.6rem; border-radius: var(--r-pill);
   background: var(--green-soft); color: var(--green);
   white-space: nowrap;
@@ -479,7 +482,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .kv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.82rem; color: var(--ink-dim); }
 .kv-list li { display: flex; justify-content: space-between; gap: 0.6rem; }
-.kv-list b { color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+.kv-list b { color: var(--ink); font-family: var(--font); font-weight: 600; }
 
 .add-camera-card {
   display: flex;
@@ -651,7 +654,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .camera-feed-url {
   margin: 0;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font);
   font-size: 0.68rem;
   color: var(--ink-faint);
   white-space: nowrap;
@@ -728,7 +731,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .dual-dial { display: flex; justify-content: space-around; gap: 0.4rem; padding: 0.2rem 0 0.3rem; }
 .dial-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-.dial-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; letter-spacing: 0.06em; color: var(--accent); }
+.dial-tag { font-family: var(--font); font-size: 0.66rem; letter-spacing: 0.06em; color: var(--accent); }
 
 /* ----- detection log ----- */
 .log-table { display: flex; flex-direction: column; }
@@ -743,12 +746,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 .log-row:last-child { border-bottom: none; }
 .log-row-head { color: var(--ink-faint); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-.log-time { font-family: 'IBM Plex Mono', monospace; color: var(--ink-dim); font-size: 0.78rem; }
+.log-time { font-family: var(--font); color: var(--ink-dim); font-size: 0.78rem; }
 .log-model { font-weight: 600; font-size: 0.78rem; }
 .log-model-tag { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.22rem 0.55rem; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent); }
 .log-zone { color: var(--ink-dim); }
 .log-detail { color: var(--ink); }
-.log-conf { font-family: 'IBM Plex Mono', monospace; font-weight: 600; text-align: right; }
+.log-conf { font-family: var(--font); font-weight: 600; text-align: right; }
 .log-conf.is-high { color: var(--green); }
 .log-conf.is-mid { color: var(--amber); }
 .log-conf.is-low { color: var(--red); }
@@ -777,7 +780,7 @@ button { font-family: inherit; cursor: pointer; }
 .settings-nav-eyebrow {
   margin: 0 0 0.2rem;
   padding: 0 0.55rem;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font);
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -787,7 +790,7 @@ button { font-family: inherit; cursor: pointer; }
 .settings-nav-title {
   margin: 0 0 0.85rem;
   padding: 0 0.55rem;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font);
   font-size: 1.15rem;
   font-weight: 600;
 }
@@ -1089,7 +1092,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .settings-stat-value {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font);
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -1101,7 +1104,7 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--bg-soft);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font);
   font-size: 0.78rem;
   line-height: 1.6;
 }
@@ -1143,7 +1146,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .module-eyebrow {
   margin: 0 0 0.25rem;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font);
   font-size: 0.68rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1217,7 +1220,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .module-range-label strong {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font);
   font-size: 0.9rem;
   color: var(--accent, var(--violet));
   font-weight: 600;

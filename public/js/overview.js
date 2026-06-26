@@ -214,7 +214,7 @@ function segmentedDonutSvg(segments, centerValue, centerLabel) {
       <circle cx="32" cy="32" r="26" stroke="var(--color-border)" stroke-width="7" fill="none" opacity="0.35"/>
       ${rings}
       <text x="32" y="32" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="800" fill="var(--color-text-primary)">${centerValue}</text>
-      <text x="32" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="8.5" font-weight="700" letter-spacing="0.08em" fill="var(--color-text-muted)">${centerLabel}</text>
+      <text x="32" y="44" text-anchor="middle" font-family="Inter, sans-serif" font-size="8.5" font-weight="700" letter-spacing="0.08em" fill="var(--color-text-muted)">${centerLabel}</text>
     </svg>`;
 }
 
