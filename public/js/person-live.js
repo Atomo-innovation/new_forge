@@ -10,6 +10,10 @@
 
     const DEMO_PEAK_COUNT = 5;
     const DEMO_MIN_COUNT = 3;
+    const DEMO_PREVIEW_VIDEO = '/demo/office.mp4';
+    const DEMO_DETECTION_VIDEO = '/demo/new.mp4';
+    let demoVideoPreloaded = false;
+    let demoVideoMode = null;
 
     function isDemoLive() {
       return frameData?.demoMode === true || payload?.demoMode === true
@@ -277,23 +281,77 @@
       return preview?.mode === 'video' && preview.url && !preview.simulated;
     }
 
-    function swapDemoVideo(preview) {
-      if (!isVideoFilePreview(preview)) return;
-      const host = document.getElementById('pliveStreamHost');
-      const video = host?.querySelector('video.ov-plive-media');
-      if (!video) {
-        initStreamWithPreview({ preview, camera: frameData?.camera });
-        return;
+    function preloadDemoVideos() {
+      if (demoVideoPreloaded) return;
+      demoVideoPreloaded = true;
+      [DEMO_PREVIEW_VIDEO, DEMO_DETECTION_VIDEO].forEach((url) => {
+        const el = document.createElement('video');
+        el.preload = 'auto';
+        el.muted = true;
+        el.src = url;
+      });
+    }
+
+    function getDemoVideoUrl(detecting) {
+      return detecting ? DEMO_DETECTION_VIDEO : DEMO_PREVIEW_VIDEO;
+    }
+
+    function ensureDemoVideoElement(host) {
+      if (!host) return null;
+      const canvas = document.getElementById('pliveCanvas');
+      const overlay = document.getElementById('pliveOverlay');
+      if (canvas) canvas.style.display = 'none';
+      if (overlay) {
+        overlay.style.display = 'none';
+        overlay.hidden = true;
       }
-      const nextUrl = preview.url;
-      const current = video.dataset.demoVideo || video.getAttribute('src') || '';
-      if (current.endsWith(nextUrl)) return;
-      video.dataset.demoVideo = nextUrl;
-      video.src = nextUrl;
-      video.load();
-      video.play().catch(() => {});
+      let video = host.querySelector('video.ov-plive-media');
+      if (video) {
+        host.classList.add('has-demo-video');
+        return video;
+      }
+      host.querySelectorAll('.ov-plive-media').forEach((el) => el.remove());
+      video = document.createElement('video');
+      video.className = 'ov-plive-media';
+      video.autoplay = true;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      host.insertBefore(video, host.firstChild);
+      host.classList.add('has-demo-video');
+      return video;
+    }
+
+    function setDemoVideoMode(detecting, label) {
+      if (!isDemoLive()) return;
+      preloadDemoVideos();
+      const host = document.getElementById('pliveStreamHost');
+      const video = ensureDemoVideoElement(host);
+      if (!video) return;
+
+      const mode = detecting ? 'detection' : 'preview';
+      const url = getDemoVideoUrl(detecting);
+      if (demoVideoMode === mode && video.dataset.demoVideo === url) return;
+
+      demoVideoMode = mode;
+      stopSimAnim();
+      hideStreamOverlay();
+      usingHlsStream = false;
+      usingWhepStream = false;
+
+      if (video.dataset.demoVideo !== url) {
+        video.dataset.demoVideo = url;
+        video.src = url;
+        video.play().catch(() => video.play().catch(() => {}));
+      }
+
       const meta = document.getElementById('pliveStreamMeta');
-      if (meta && preview.label) meta.textContent = preview.label;
+      if (meta) {
+        meta.textContent = label || (detecting ? 'Live AI detection' : 'Live preview');
+      }
       streamInitialized = true;
       streamLocked = true;
     }
@@ -661,9 +719,17 @@
           startOverlayLoop();
         }
         if (!start) streamLocked = false;
-        if (isDemoLive() && data.preview) {
-          frameData = { ...(frameData || {}), preview: data.preview };
-          swapDemoVideo(data.preview);
+        if (isDemoLive()) {
+          setDemoVideoMode(start, data.preview?.label);
+          frameData = {
+            ...(frameData || {}),
+            preview: data.preview || {
+              mode: 'video',
+              url: getDemoVideoUrl(start),
+              simulated: false,
+              label: start ? 'Live AI detection' : 'Live preview',
+            },
+          };
         }
         if (start) {
           startPolling();
@@ -684,10 +750,8 @@
           };
           updateStatsOnly();
         }
-        if (start && window.DetectionTab?.syncLivePayload && data.payload) {
-          window.DetectionTab.syncLivePayload(data.payload);
-        } else if (start && window.DetectionTab?.reload) {
-          window.DetectionTab.reload();
+        if (start && data.payload && window.DetectionTab?.syncLiveMetrics) {
+          window.DetectionTab.syncLiveMetrics(data.payload);
         }
       } catch (err) {
         showToast(err.message || 'Could not update detection');
@@ -974,8 +1038,15 @@
         return;
       }
 
+      if (isVideoFilePreview(preview) && isDemoLive()) {
+        const detecting = preview.url === DEMO_DETECTION_VIDEO
+          || inferenceRunning
+          || demoVideoMode === 'detection';
+        setDemoVideoMode(detecting, preview.label);
+        return;
+      }
+
       if (isVideoFilePreview(preview) && host.querySelector('video.ov-plive-media') && streamInitialized) {
-        swapDemoVideo(preview);
         return;
       }
 
@@ -1053,6 +1124,11 @@
       }
 
       if (preview.mode === 'video' && preview.url && !preview.simulated) {
+        if (isDemoLive()) {
+          const detecting = preview.url === DEMO_DETECTION_VIDEO || inferenceRunning;
+          setDemoVideoMode(detecting, preview.label);
+          return;
+        }
         if (canvas) canvas.style.display = 'none';
         if (overlay) overlay.style.display = 'none';
         const video = document.createElement('video');
@@ -1163,9 +1239,6 @@
         frameData = await res.json();
         if (isDemoLive()) {
           frameData.inferenceRunning = inferenceRunning;
-          if (frameData.preview) {
-            swapDemoVideo(frameData.preview);
-          }
         } else {
           inferenceRunning = Boolean(frameData.inferenceRunning);
         }
@@ -1179,6 +1252,8 @@
         if (usingWhepStream || usingHlsStream) {
           startOverlayLoop();
           drawBoxesOverlay();
+        } else if (isDemoLive()) {
+          /* Demo uses a single stable video element — do not touch the stream while polling. */
         } else {
           const streamHost = document.getElementById('pliveStreamHost');
           if (streamHost?.querySelector('video.ov-plive-media')) {
@@ -1194,7 +1269,9 @@
         }
 
         updateStatsOnly();
-        updateInferenceUi(frameData);
+        if (!isDemoLive()) {
+          updateInferenceUi(frameData);
+        }
 
         if (frameData.payload && window.DetectionTab?.syncLiveMetrics) {
           window.DetectionTab.syncLiveMetrics(frameData.payload);
@@ -1286,9 +1363,10 @@
       mount(false);
 
       if (demoVideoReady) {
-        initStreamWithPreview({ preview: frameData.preview, camera: frameData.camera });
-        if (payload && window.DetectionTab?.syncLivePayload) {
-          window.DetectionTab.syncLivePayload(payload);
+        preloadDemoVideos();
+        setDemoVideoMode(false, frameData.preview?.label);
+        if (payload && window.DetectionTab?.syncLiveMetrics) {
+          window.DetectionTab.syncLiveMetrics(payload);
         }
         return;
       }
@@ -1350,6 +1428,7 @@
         }
         if (demoMode) {
           inferenceRunning = false;
+          demoVideoMode = null;
         }
         await selectCamera(activeId);
         return;

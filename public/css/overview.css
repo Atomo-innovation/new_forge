@@ -4096,6 +4096,11 @@ body.ov-modal-open {
   display: block;
 }
 
+.ov-plive-stream.has-demo-video .ov-plive-canvas,
+.ov-plive-stream.has-demo-video .ov-plive-overlay {
+  display: none !important;
+}
+
 .ov-plive-media {
   position: absolute;
   inset: 0;
