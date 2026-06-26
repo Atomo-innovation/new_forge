@@ -7,6 +7,67 @@ let personSaveTimer = null;
 let dashEventWs = null;
 let dashWsConnected = false;
 let lastEventsFingerprint = '';
+const DEMO_EVENT_IMAGES = [
+  '/demo/new.png',
+  '/demo/new2.png',
+  '/demo/new3.png',
+  '/demo/new4.png',
+  '/demo/new5.png',
+];
+let demoImageLoopTimers = [];
+
+function isDemoImageCycleEnabled() {
+  return document.body.classList.contains('demo-mode')
+    || payload?.demoMode === true;
+}
+
+function pickRandomDemoImage(exclude = null) {
+  const pool = exclude
+    ? DEMO_EVENT_IMAGES.filter((url) => url !== exclude)
+    : DEMO_EVENT_IMAGES;
+  return pool[Math.floor(Math.random() * pool.length)] || DEMO_EVENT_IMAGES[0];
+}
+
+function nextDemoImageInLoop(current) {
+  const idx = DEMO_EVENT_IMAGES.indexOf(current);
+  if (idx < 0) return pickRandomDemoImage();
+  return DEMO_EVENT_IMAGES[(idx + 1) % DEMO_EVENT_IMAGES.length];
+}
+
+function fadeDemoEventImage(img, nextSrc) {
+  if (!img || img.dataset.demoImg === nextSrc) return;
+  img.classList.add('is-fading');
+  window.setTimeout(() => {
+    img.src = nextSrc;
+    img.dataset.demoImg = nextSrc;
+    img.classList.remove('is-fading');
+  }, 220);
+}
+
+function stopDemoEventImageLoops() {
+  demoImageLoopTimers.forEach((timer) => clearInterval(timer));
+  demoImageLoopTimers = [];
+}
+
+function startDemoEventImageLoops() {
+  stopDemoEventImageLoops();
+  if (!isDemoImageCycleEnabled()) return;
+
+  document.querySelectorAll('.ov-det-event-list-item .ov-det-event-img[data-demo-cycle="true"]').forEach((img, i) => {
+    const initial = img.dataset.demoImg
+      || img.getAttribute('src')?.replace(/\?.*$/, '')
+      || pickRandomDemoImage();
+    img.dataset.demoImg = DEMO_EVENT_IMAGES.includes(initial) ? initial : pickRandomDemoImage();
+    img.src = img.dataset.demoImg;
+
+    const timer = window.setInterval(() => {
+      if (document.hidden) return;
+      const next = nextDemoImageInLoop(img.dataset.demoImg);
+      fadeDemoEventImage(img, next);
+    }, 2600 + (i * 380));
+    demoImageLoopTimers.push(timer);
+  });
+}
 
 function eventsFingerprint(events) {
   return (events || []).map((e) => e.id).join('|');
@@ -360,18 +421,21 @@ function updateEventCountLabel() {
 
 function renderEventCard(e) {
   const useStaticImage = Boolean(e.imageUrl);
+  const demoCycle = useStaticImage && (e.demoImageCycle || String(e.imageUrl).startsWith('/demo/'));
   const bboxAttr = !useStaticImage && e.bbox && e.bbox.length >= 4
     ? ` data-bbox="${esc(JSON.stringify(e.bbox))}"`
     : '';
   const cropClass = !useStaticImage && e.bbox && e.bbox.length >= 4 ? ' has-bbox-crop' : '';
+  const imgSrc = demoCycle ? (e.imageUrl || pickRandomDemoImage()) : eventImageUrl(e);
   return `
       <article class="ov-det-event-card ov-det-event-list-item" role="listitem" data-event-id="${esc(e.id)}" tabindex="0">
         <button type="button" class="ov-det-event-thumb-btn" data-action="open-event" data-event-id="${esc(e.id)}" aria-label="View detection: ${esc(e.title)}">
           <div class="ov-det-event-thumb">
             <img
-              src="${eventImageUrl(e)}"
+              src="${esc(imgSrc)}"
               alt="Detection snapshot: ${esc(e.title)}"
               class="ov-det-event-img${cropClass}"
+              ${demoCycle ? ` data-demo-cycle="true" data-demo-img="${esc(imgSrc)}"` : ''}
               ${bboxAttr}
               loading="lazy"
               decoding="async"
@@ -461,10 +525,14 @@ function openEventLightbox(eventId) {
   const box = document.getElementById('detEventLightbox');
   if (!event || !box) return;
 
+  const rowImg = document.querySelector(`[data-event-id="${CSS.escape(eventId)}"] .ov-det-event-img`);
+  const liveSrc = rowImg?.dataset.demoImg || rowImg?.getAttribute('src')?.replace(/\?.*$/, '');
+  const previewSrc = liveSrc || eventImageUrl(event);
+
   const media = document.getElementById('detEventLightboxMedia');
   const info = document.getElementById('detEventLightboxInfo');
   if (media) {
-    media.innerHTML = `<img src="${eventImageUrl(event)}" alt="Detection snapshot: ${esc(event.title)}" class="ov-det-event-lightbox-img${event.bbox ? ' has-bbox-crop' : ''}"${event.bbox ? ` data-bbox="${esc(JSON.stringify(event.bbox))}"` : ''}>`;
+    media.innerHTML = `<img src="${esc(previewSrc)}" alt="Detection snapshot: ${esc(event.title)}" class="ov-det-event-lightbox-img${event.bbox ? ' has-bbox-crop' : ''}"${event.bbox ? ` data-bbox="${esc(JSON.stringify(event.bbox))}"` : ''}>`;
     applyCropToEventImages(media);
   }
   if (info) {
@@ -724,6 +792,7 @@ function wireGalleryEvents() {
   }
 
   applyCropToEventImages();
+  startDemoEventImageLoops();
 }
 
 /*
