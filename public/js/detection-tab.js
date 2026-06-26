@@ -308,6 +308,7 @@ function renderPersonControls() {
 
 function eventImageUrl(event) {
   const base = event.imageUrl || `/api/detection/events/${encodeURIComponent(event.id)}/snapshot`;
+  if (base.startsWith('/demo/')) return base;
   const sid = sessionStorage.getItem('atomoSessionId');
   const sep = base.includes('?') ? '&' : '?';
   const auth = sid ? `${sep}sessionId=${encodeURIComponent(sid)}` : '';
@@ -358,12 +359,13 @@ function updateEventCountLabel() {
 }
 
 function renderEventCard(e) {
-  const bboxAttr = e.bbox && e.bbox.length >= 4
+  const useStaticImage = Boolean(e.imageUrl);
+  const bboxAttr = !useStaticImage && e.bbox && e.bbox.length >= 4
     ? ` data-bbox="${esc(JSON.stringify(e.bbox))}"`
     : '';
-  const cropClass = e.bbox && e.bbox.length >= 4 ? ' has-bbox-crop' : '';
+  const cropClass = !useStaticImage && e.bbox && e.bbox.length >= 4 ? ' has-bbox-crop' : '';
   return `
-      <article class="ov-det-event-card" role="listitem" data-event-id="${esc(e.id)}" tabindex="0">
+      <article class="ov-det-event-card ov-det-event-list-item" role="listitem" data-event-id="${esc(e.id)}" tabindex="0">
         <button type="button" class="ov-det-event-thumb-btn" data-action="open-event" data-event-id="${esc(e.id)}" aria-label="View detection: ${esc(e.title)}">
           <div class="ov-det-event-thumb">
             <img
@@ -374,42 +376,24 @@ function renderEventCard(e) {
               loading="lazy"
               decoding="async"
             >
-            <div class="ov-det-event-thumb-overlay">
-              <span class="ov-badge ${severityBadge(e.severity)}">${esc(e.severity)}</span>
-              <span class="ov-det-event-conf ov-mono">${Math.round(e.confidence * 100)}%</span>
-            </div>
             <span class="ov-det-event-time-badge ov-mono">${esc(e.timeLabel)}</span>
           </div>
         </button>
         <div class="ov-det-event-details">
-          <h4 class="ov-det-event-title">${esc(e.eventType || e.title)}</h4>
-          <dl class="ov-det-event-meta">
-            <div class="ov-det-event-meta-row">
-              <dt>Type</dt>
-              <dd>${esc(e.label || 'person')}</dd>
-            </div>
-            <div class="ov-det-event-meta-row">
-              <dt>Camera</dt>
-              <dd>${esc(e.camera)}</dd>
-            </div>
-            <div class="ov-det-event-meta-row">
-              <dt>Track ID</dt>
-              <dd>${e.trackingId != null ? esc(`#${e.trackingId}`) : '—'}</dd>
-            </div>
-            <div class="ov-det-event-meta-row">
-              <dt>Location</dt>
-              <dd>${esc(e.location || '—')}</dd>
-            </div>
-            <div class="ov-det-event-meta-row">
-              <dt>Zone</dt>
-              <dd>${esc(e.zone || '—')}</dd>
-            </div>
-            <div class="ov-det-event-meta-row">
-              <dt>Captured</dt>
-              <dd>${esc(e.dateLabel || '')} · ${esc(e.timeLabel)}</dd>
-            </div>
-          </dl>
+          <div class="ov-det-event-list-head">
+            <h4 class="ov-det-event-title">${esc(e.eventType || e.title)}</h4>
+            <span class="ov-badge ${severityBadge(e.severity)}">${esc(e.severity)}</span>
+          </div>
+          <p class="ov-det-event-list-summary">${esc(e.camera)} · ${esc(e.location || '—')}</p>
+          <p class="ov-det-event-list-meta">
+            <span class="ov-mono">${Math.round(e.confidence * 100)}% confidence</span>
+            <span class="ov-det-event-list-sep" aria-hidden="true">·</span>
+            <span>${esc(e.zone || '—')}</span>
+            <span class="ov-det-event-list-sep" aria-hidden="true">·</span>
+            <span>${esc(e.dateLabel || '')} ${esc(e.timeLabel)}</span>
+          </p>
         </div>
+        <button type="button" class="ov-det-event-list-action" data-action="open-event" data-event-id="${esc(e.id)}">View</button>
       </article>`;
 }
 
@@ -422,7 +406,7 @@ function renderEventCards(events) {
   }
 
   return `
-    <div class="ov-det-gallery" role="list">
+    <div class="ov-det-event-list" role="list">
       ${events.map((e) => renderEventCard(e)).join('')}
     </div>`;
 }
@@ -945,10 +929,10 @@ function prependEvents(newEvents, nextPayload) {
     updateEventCountLabel();
     return;
   }
-  let gallery = host.querySelector('.ov-det-gallery');
+  let gallery = host.querySelector('.ov-det-event-list');
   if (!gallery) {
-    host.innerHTML = '<div class="ov-det-gallery" role="list"></div>';
-    gallery = host.querySelector('.ov-det-gallery');
+    host.innerHTML = '<div class="ov-det-event-list" role="list"></div>';
+    gallery = host.querySelector('.ov-det-event-list');
   }
   host.querySelector('.ov-det-empty')?.remove();
   gallery.insertAdjacentHTML('afterbegin', toPrepend.map((e) => renderEventCard(e)).join(''));
