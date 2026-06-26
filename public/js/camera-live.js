@@ -20,6 +20,8 @@ const AI_MODELS = [
 const DEFAULT_CONFIDENCE = 0.7;
 const CONFIDENCE_MIN = 25;
 const CONFIDENCE_MAX = 95;
+const DEMO_CAMERA_ID = 'demo-cam-1';
+const DEMO_DETECTION_VIDEO = '/demo/new.mp4';
 
 let confSaveTimer = null;
 
@@ -150,6 +152,19 @@ function healthLabel(health) {
   return 'Poor';
 }
 
+function isDemoCamera(cam) {
+  return Boolean(cam?.demo || cam?.id === DEMO_CAMERA_ID);
+}
+
+function demoDetectionPreview() {
+  return {
+    mode: 'video',
+    url: DEMO_DETECTION_VIDEO,
+    simulated: false,
+    label: 'Live AI detection',
+  };
+}
+
 function buildLocalLiveView(camera) {
   if (!camera) return null;
   const url = String(camera.rtspUrl || '').trim();
@@ -158,7 +173,9 @@ function buildLocalLiveView(camera) {
   const online = camera.status === 'online';
 
   let preview;
-  if (url && type === 'http' && /^https?:\/\//i.test(url)) {
+  if (isDemoCamera(camera)) {
+    preview = demoDetectionPreview();
+  } else if (url && type === 'http' && /^https?:\/\//i.test(url)) {
     preview = { mode: 'http', url, simulated: false };
   } else if (url && type === 'video-file' && /\.(mp4|webm|ogg)(\?|$)/i.test(url)) {
     preview = { mode: 'video', url, simulated: false };
@@ -291,7 +308,7 @@ function renderLivePage() {
         </div>
 
         <div class="ov-cam-live-meta-bar">
-          <span class="ov-mono">${cam ? esc(cam.rtspUrl || 'No stream URL — showing simulated feed') : '—'}</span>
+          <span class="ov-mono">${cam ? esc(isDemoCamera(cam) ? 'Live AI detection' : (cam.rtspUrl || 'No stream URL — showing simulated feed')) : '—'}</span>
           ${cam?.ipAddress ? `<span class="ov-cam-live-meta-ip">${esc(cam.ipAddress)}${cam.port ? `:${esc(cam.port)}` : ''}</span>` : ''}
         </div>
       </div>
