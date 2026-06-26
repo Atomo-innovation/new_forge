@@ -4405,3 +4405,122 @@ body.ov-modal-open {
   color: var(--ov-muted);
   line-height: 1.6;
 }
+
+.ov-settings-disabled-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 760px;
+}
+
+.ov-page-head {
+  margin-bottom: 4px;
+}
+
+.ov-page-eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.ov-page-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.ov-settings-disabled-card {
+  padding: 28px 26px 24px;
+  text-align: center;
+}
+
+.ov-settings-disabled-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+}
+
+.ov-settings-disabled-card h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.ov-settings-disabled-lead {
+  margin: 0 auto 18px;
+  max-width: 520px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+}
+
+.ov-settings-disabled-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ov-settings-disabled-preview {
+  padding: 18px 20px 8px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.72;
+}
+
+.ov-settings-disabled-preview-label {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.ov-settings-disabled-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ov-settings-disabled-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 4px;
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.ov-settings-disabled-list li:last-child {
+  padding-bottom: 10px;
+}
+
+.ov-settings-disabled-tag {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

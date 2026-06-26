@@ -21,6 +21,8 @@ function setActiveNav() {
     activeId = 'overview';
   } else if (pathname.startsWith('/detection/')) {
     activeId = pathname.split('/')[2] || null;
+  } else if (pathname === '/settings') {
+    activeId = 'settings';
   } else if (pathname === '/dashboard' && hash) {
     activeId = HASH_NAV[hash] || HASH_NAV[hash.replace(/\/$/, '')] || null;
   }
@@ -235,6 +237,7 @@ async function initSubscriptionGate() {
     if (link.dataset.subscriptionBound === 'true') return;
     link.dataset.subscriptionBound = 'true';
     link.addEventListener('click', (e) => {
+      if (link.dataset.navId === 'settings') return;
       e.preventDefault();
       showSubscriptionModal(NAV_LABELS[link.dataset.navId] || 'This feature');
     });
