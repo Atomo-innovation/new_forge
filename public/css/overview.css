@@ -4127,10 +4127,6 @@ body.ov-modal-open {
   letter-spacing: 0.06em;
 }
 
-.ov-plive-stream.has-demo-video .ov-plive-stream-meta {
-  display: none;
-}
-
 .ov-plive-stream-meta {
   position: absolute;
   right: 12px;

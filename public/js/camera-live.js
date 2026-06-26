@@ -291,7 +291,7 @@ function renderLivePage() {
         </div>
 
         <div class="ov-cam-live-meta-bar">
-          <span class="ov-mono">${cam ? esc(cam.demo ? 'Live demo stream' : (cam.rtspUrl || 'No stream URL — showing simulated feed')) : '—'}</span>
+          <span class="ov-mono">${cam ? esc(cam.rtspUrl || 'No stream URL — showing simulated feed') : '—'}</span>
           ${cam?.ipAddress ? `<span class="ov-cam-live-meta-ip">${esc(cam.ipAddress)}${cam.port ? `:${esc(cam.port)}` : ''}</span>` : ''}
         </div>
       </div>
