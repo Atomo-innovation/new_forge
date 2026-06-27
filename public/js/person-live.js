@@ -10,7 +10,7 @@
 
     const DEMO_PEAK_COUNT = 8;
     const DEMO_PREVIEW_VIDEO = '/demo/wnew23.mp4';
-    const DEMO_DETECTION_VIDEO = '/demo/dnew12.mp4';
+    const DEMO_DETECTION_VIDEO = '/demo/dnew.mp4';
     let demoVideoPreloaded = false;
     let demoVideoMode = null;
 
