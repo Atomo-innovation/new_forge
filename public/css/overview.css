@@ -3876,8 +3876,23 @@ body.ov-modal-open {
   background: var(--color-surface-muted);
 }
 
-.ov-det-stop-btn {
-  background: var(--color-error);
+.ov-quick-btn.ov-det-stop-btn {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+  font-weight: 600;
+}
+
+.ov-quick-btn.ov-det-stop-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.ov-quick-btn.ov-det-stop-btn:active {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
 }
 
 .ov-det-slider-row {
