@@ -37,6 +37,10 @@
   --color-overlay-strong: rgba(15, 23, 42, 0.75);
   --color-modal-shadow: rgba(15, 23, 42, 0.28);
   --color-log-text: #cbd5e1;
+  --scrollbar-size: 6px;
+  --scrollbar-track: rgba(26, 26, 26, 0.06);
+  --scrollbar-thumb: rgba(26, 26, 26, 0.22);
+  --scrollbar-thumb-hover: rgba(26, 26, 26, 0.34);
 }
 
 [data-theme='dark'] {
@@ -68,6 +72,10 @@
   --color-overlay-strong: rgba(24, 24, 28, 0.86);
   --color-modal-shadow: rgba(0, 0, 0, 0.38);
   --color-log-text: #b0b0b8;
+  --scrollbar-size: 6px;
+  --scrollbar-track: rgba(255, 255, 255, 0.04);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.24);
 }
 
 [data-theme='dark'] .ov-det-preview-sim {
@@ -448,17 +456,98 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
   margin-left: auto;
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+html::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+html::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+html::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.ov-thin-scrollbar,
+.ov-settings-main .settings-nav,
+.ov-modal-body,
+.ov-det-events-scroll,
+.ov-cam-form-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.ov-thin-scrollbar::-webkit-scrollbar,
+.ov-settings-main .settings-nav::-webkit-scrollbar,
+.ov-modal-body::-webkit-scrollbar,
+.ov-det-events-scroll::-webkit-scrollbar,
+.ov-cam-form-wrap::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.ov-thin-scrollbar::-webkit-scrollbar-track,
+.ov-settings-main .settings-nav::-webkit-scrollbar-track,
+.ov-modal-body::-webkit-scrollbar-track,
+.ov-det-events-scroll::-webkit-scrollbar-track,
+.ov-cam-form-wrap::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+.ov-thin-scrollbar::-webkit-scrollbar-thumb,
+.ov-settings-main .settings-nav::-webkit-scrollbar-thumb,
+.ov-modal-body::-webkit-scrollbar-thumb,
+.ov-det-events-scroll::-webkit-scrollbar-thumb,
+.ov-cam-form-wrap::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.ov-thin-scrollbar::-webkit-scrollbar-thumb:hover,
+.ov-settings-main .settings-nav::-webkit-scrollbar-thumb:hover,
+.ov-modal-body::-webkit-scrollbar-thumb:hover,
+.ov-det-events-scroll::-webkit-scrollbar-thumb:hover,
+.ov-cam-form-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+[data-theme='dark'] .ov-thin-scrollbar::-webkit-scrollbar-thumb,
+[data-theme='dark'] .ov-settings-main .settings-nav::-webkit-scrollbar-thumb,
+[data-theme='dark'] .ov-modal-body::-webkit-scrollbar-thumb,
+[data-theme='dark'] .ov-det-events-scroll::-webkit-scrollbar-thumb,
+[data-theme='dark'] .ov-cam-form-wrap::-webkit-scrollbar-thumb {
+  border-color: var(--color-surface);
+}
+
 /* No visible scrollbars on sidebar or navbar metrics */
-.ov-sidebar,
-.ov-nav,
-.ov-metrics-strip {
+.ov-body .ov-sidebar,
+.ov-body .ov-nav,
+.ov-body .ov-metrics-strip {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.ov-sidebar::-webkit-scrollbar,
-.ov-nav::-webkit-scrollbar,
-.ov-metrics-strip::-webkit-scrollbar {
+.ov-body .ov-sidebar::-webkit-scrollbar,
+.ov-body .ov-nav::-webkit-scrollbar,
+.ov-body .ov-metrics-strip::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
@@ -3224,31 +3313,7 @@ body.ov-modal-open {
   max-height: 240px;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 6px;
-  margin-right: -2px;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)) transparent;
-}
-
-.ov-det-events-scroll::-webkit-scrollbar {
-  width: 7px;
-}
-
-.ov-det-events-scroll::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--color-border) 35%, transparent);
-  border-radius: 999px;
-}
-
-.ov-det-events-scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.ov-det-events-scroll::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-accent) 70%, var(--color-border));
-  background-clip: padding-box;
+  padding-right: 4px;
 }
 
 .ov-det-events-scroll .ov-det-event-list {
@@ -4639,10 +4704,12 @@ body.ov-modal-open {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
-  padding: 18px 14px;
+  padding: 18px 12px 18px 14px;
   box-shadow: var(--shadow-soft);
   max-height: calc(100vh - 120px);
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .ov-settings-main .settings-nav-eyebrow {
