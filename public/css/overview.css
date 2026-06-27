@@ -18,6 +18,10 @@
   --color-success: #588157;
   --color-warning: #d4a373;
   --color-error: #c1666b;
+  --color-btn: #5c5c5c;
+  --color-btn-hover: #484848;
+  --color-btn-muted: rgba(92, 92, 92, 0.1);
+  --color-btn-border: rgba(92, 92, 92, 0.28);
   --shadow-card: 0 10px 40px rgba(52, 78, 65, 0.07);
   --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.04);
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -50,6 +54,10 @@
   --color-success: #6fbf8a;
   --color-warning: #d4a06a;
   --color-error: #d97b82;
+  --color-btn: #a8a8ae;
+  --color-btn-hover: #c8ccd4;
+  --color-btn-muted: rgba(168, 168, 174, 0.14);
+  --color-btn-border: rgba(168, 168, 174, 0.32);
   --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.42);
   --shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.26);
   --ov-offline-tint: rgba(217, 123, 130, 0.09);
@@ -472,9 +480,9 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
 }
 
 .ov-icon-btn:hover {
-  background: var(--color-accent);
+  background: var(--color-btn);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-btn);
 }
 
 .ov-section-head {
@@ -499,9 +507,9 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
 }
 
 .ov-reset-btn:hover {
-  background: var(--color-accent-muted);
-  color: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--color-btn-muted);
+  color: var(--color-btn);
+  border-color: var(--color-btn-border);
 }
 
 .ov-section-head h1 {
@@ -1322,9 +1330,9 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
 }
 
 .ov-quick-btn:hover {
-  background: var(--color-accent);
+  background: var(--color-btn);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-btn);
 }
 
 .ov-quick-btn:disabled {
@@ -1662,7 +1670,7 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
   bottom: 24px;
   right: 24px;
   padding: 12px 20px;
-  background: var(--color-accent);
+  background: var(--color-btn);
   color: #fff;
   border-radius: var(--radius-pill);
   font-size: 13px;
@@ -2052,7 +2060,7 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
   padding: 10px 18px;
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
+  background: var(--color-btn);
   color: #fff;
   font-family: var(--font-sans);
   font-size: 13px;
@@ -2064,7 +2072,8 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
 
 .ov-cam-add-btn:hover {
   transform: translateY(-1px);
-  opacity: 0.92;
+  background: var(--color-btn-hover);
+  opacity: 0.96;
 }
 
 .ov-cam-grid {
@@ -2245,9 +2254,9 @@ body:not(.demo-mode) .ov-nav a[data-subscription-lock="true"] {
 }
 
 .ov-cam-source-chip.active {
-  background: var(--color-accent);
+  background: var(--color-btn);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-btn);
 }
 
 /* Modal */
@@ -2807,15 +2816,15 @@ body.ov-modal-open {
 }
 
 .ov-cam-save-btn:not(:disabled) {
-  background: var(--color-accent);
+  background: var(--color-btn);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-btn);
 }
 
 .ov-cam-save-btn:not(:disabled):hover {
-  background: var(--color-accent);
+  background: var(--color-btn-hover);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-btn-hover);
 }
 
 .ov-cam-validation {

@@ -1855,9 +1855,9 @@ body.processing-active {
   --text: #1a1a1a;
   --text-muted: #5c5c5c;
   --text-dim: #8e8e8e;
-  --primary: #344e41;
-  --primary-hover: #2a3f34;
-  --primary-glow: rgba(52, 78, 65, 0.16);
+  --primary: #5c5c5c;
+  --primary-hover: #484848;
+  --primary-glow: rgba(92, 92, 92, 0.16);
   --success: #588157;
   --error: #c1666b;
   --warning: #d4a373;
@@ -1927,16 +1927,16 @@ body {
   color: var(--text-dim);
 }
 
-/* Primary action: solid forest-green, soft shadow (no blue gradient) */
+/* Primary action: solid gray */
 .btn-primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(52, 78, 65, 0.18);
+  box-shadow: 0 6px 18px rgba(92, 92, 92, 0.18);
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
-  box-shadow: 0 8px 22px rgba(52, 78, 65, 0.26);
+  box-shadow: 0 8px 22px rgba(92, 92, 92, 0.24);
 }
 
 /* Alerts tuned to the dashboard palette */
