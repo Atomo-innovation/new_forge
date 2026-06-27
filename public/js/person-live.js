@@ -354,9 +354,12 @@
       usingHlsStream = false;
       usingWhepStream = false;
 
-      if (video.dataset.demoVideo !== url) {
+      if (video.dataset.demoVideo !== url || video.error) {
         video.dataset.demoVideo = url;
         video.src = url;
+        video.load();
+        video.play().catch(() => video.play().catch(() => {}));
+      } else if (video.paused || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
         video.play().catch(() => video.play().catch(() => {}));
       }
 
