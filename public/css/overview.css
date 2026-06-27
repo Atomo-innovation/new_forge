@@ -4622,121 +4622,378 @@ body.ov-modal-open {
   line-height: 1.6;
 }
 
-.ov-settings-disabled-main {
-  display: flex;
-  flex-direction: column;
+.ov-settings-main {
+  min-width: 0;
+}
+
+.ov-settings-main .settings-shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
   gap: 18px;
-  max-width: 760px;
+  align-items: start;
 }
 
-.ov-page-head {
-  margin-bottom: 4px;
+.ov-settings-main .settings-nav {
+  position: sticky;
+  top: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 18px 14px;
+  box-shadow: var(--shadow-soft);
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
-.ov-page-eyebrow {
-  margin: 0 0 6px;
-  font-size: 12px;
+.ov-settings-main .settings-nav-eyebrow {
+  margin: 0 0 4px;
+  padding: 0 8px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
-.ov-page-title {
-  margin: 0;
-  font-size: 28px;
+.ov-settings-main .settings-nav-title {
+  margin: 0 0 14px;
+  padding: 0 8px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--color-text-primary);
 }
 
-.ov-settings-disabled-card {
-  padding: 28px 26px 24px;
-  text-align: center;
+.ov-settings-main .settings-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.ov-settings-disabled-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 16px;
-  border-radius: 18px;
+.ov-settings-main .settings-group-label {
+  margin: 12px 0 6px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.ov-settings-main .settings-group-label:first-child {
+  margin-top: 0;
+}
+
+.ov-settings-main .settings-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ov-settings-main .settings-link:hover {
   background: var(--color-surface-muted);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
-.ov-settings-disabled-card h2 {
-  margin: 0 0 10px;
-  font-size: 22px;
+.ov-settings-main .settings-link.is-active {
+  background: var(--color-btn-muted);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.ov-settings-main .settings-link-danger {
+  color: var(--color-error);
+}
+
+.ov-settings-main .settings-link-danger:hover,
+.ov-settings-main .settings-link-danger.is-active {
+  background: var(--ov-offline-tint);
+  color: var(--color-error);
+}
+
+.ov-settings-main .settings-main {
+  min-width: 0;
+}
+
+.ov-settings-main .settings-section-head {
+  margin-bottom: 14px;
+}
+
+.ov-settings-main .settings-section-head h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--color-text-primary);
 }
 
-.ov-settings-disabled-lead {
-  margin: 0 auto 18px;
-  max-width: 520px;
-  font-size: 15px;
-  line-height: 1.65;
+.ov-settings-main .settings-section-head p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  max-width: 52rem;
+}
+
+.ov-settings-main .settings-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-soft);
+}
+
+.ov-settings-main .settings-card-danger {
+  border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--ov-offline-tint) 100%);
+}
+
+.ov-settings-main .settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.ov-settings-main .settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
   color: var(--color-text-secondary);
 }
 
-.ov-settings-disabled-actions {
+.ov-settings-main .settings-field-wide {
+  grid-column: 1 / -1;
+}
+
+.ov-settings-main .settings-field span {
+  font-weight: 600;
+}
+
+.ov-settings-main .settings-field input,
+.ov-settings-main .settings-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.ov-settings-main .settings-field input:read-only,
+.ov-settings-main .settings-field input:disabled,
+.ov-settings-main .settings-field select:disabled {
+  opacity: 0.88;
+  cursor: default;
+}
+
+.ov-settings-main .settings-note,
+.ov-settings-main .settings-empty {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+.ov-settings-main .settings-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: center;
+  margin-top: 16px;
 }
 
-.ov-settings-disabled-preview {
-  padding: 18px 20px 8px;
-  pointer-events: none;
-  user-select: none;
-  opacity: 0.72;
+.ov-settings-main .ghost-btn,
+.ov-settings-main .solid-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.ov-settings-disabled-preview-label {
-  margin: 0 0 12px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+.ov-settings-main .ghost-btn:hover:not(:disabled) {
+  background: var(--color-btn-muted);
+  color: var(--color-text-primary);
+  border-color: var(--color-btn-border);
+}
+
+.ov-settings-main .ghost-btn:disabled,
+.ov-settings-main .solid-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ov-settings-main .solid-btn {
+  background: var(--color-btn);
+  border-color: var(--color-btn);
+  color: #fff;
+}
+
+.ov-settings-main .solid-btn:hover:not(:disabled) {
+  background: var(--color-btn-hover);
+  border-color: var(--color-btn-hover);
+}
+
+.ov-settings-main .settings-danger-btn {
+  color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 30%, var(--color-border));
+}
+
+.ov-settings-main .settings-danger-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.ov-settings-main .settings-table-wrap {
+  overflow-x: auto;
+}
+
+.ov-settings-main .settings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ov-settings-main .settings-table th,
+.ov-settings-main .settings-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ov-settings-main .settings-table th {
+  font-size: 11px;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.ov-settings-main .settings-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--color-surface-muted);
   color: var(--color-text-muted);
 }
 
-.ov-settings-disabled-list {
+.ov-settings-main .settings-badge.is-ok {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.ov-settings-main .settings-perm-list,
+.ov-settings-main .settings-model-list,
+.ov-settings-main .settings-check-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
 }
 
-.ov-settings-disabled-list li {
+.ov-settings-main .settings-perm-list li,
+.ov-settings-main .settings-model-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ov-settings-main .settings-perm-list li:last-child,
+.ov-settings-main .settings-model-list li:last-child {
+  border-bottom: none;
+}
+
+.ov-settings-main .settings-model-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 13px 4px;
-  border-top: 1px solid var(--color-border);
-  font-size: 14px;
+  font-weight: 500;
+}
+
+.ov-settings-main .settings-perm-role {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.ov-settings-main .settings-perm-desc {
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
-.ov-settings-disabled-list li:last-child {
-  padding-bottom: 10px;
+.ov-settings-main .settings-stat-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-.ov-settings-disabled-tag {
-  flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
+.ov-settings-main .settings-stat {
+  padding: 14px;
+  border-radius: var(--radius-inner);
   background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
+}
+
+.ov-settings-main .settings-stat-label {
+  display: block;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.ov-settings-main .settings-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.ov-settings-main .settings-log-view {
+  min-height: 120px;
+  padding: 14px;
+  border-radius: var(--radius-inner);
+  background: var(--color-surface-muted);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.ov-settings-main .is-hidden {
+  display: none !important;
+}
+
+@media (max-width: 960px) {
+  .ov-settings-main .settings-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .ov-settings-main .settings-nav {
+    position: static;
+    max-height: none;
+  }
+
+  .ov-settings-main .settings-form-grid {
+    grid-template-columns: 1fr;
+  }
 }

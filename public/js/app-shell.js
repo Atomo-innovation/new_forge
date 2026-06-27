@@ -237,7 +237,6 @@ async function initSubscriptionGate() {
     if (link.dataset.subscriptionBound === 'true') return;
     link.dataset.subscriptionBound = 'true';
     link.addEventListener('click', (e) => {
-      if (link.dataset.navId === 'settings') return;
       e.preventDefault();
       showSubscriptionModal(NAV_LABELS[link.dataset.navId] || 'This feature');
     });
