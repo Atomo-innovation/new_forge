@@ -472,8 +472,8 @@ function renderEventCard(e) {
   const cropClass = !useStaticImage && e.bbox && e.bbox.length >= 4 ? ' has-bbox-crop' : '';
   const imgSrc = demoCycle ? (e.imageUrl || pickRandomDemoImage()) : eventImageUrl(e);
   return `
-      <article class="ov-det-event-card ov-det-event-list-item" role="listitem" data-event-id="${esc(e.id)}" tabindex="0">
-        <button type="button" class="ov-det-event-thumb-btn" data-action="open-event" data-event-id="${esc(e.id)}" aria-label="View detection: ${esc(e.title)}">
+      <article class="ov-det-event-card ov-det-event-list-item" role="listitem" data-event-id="${esc(e.id)}">
+        <div class="ov-det-event-thumb-btn">
           <div class="ov-det-event-thumb">
             <img
               src="${esc(imgSrc)}"
@@ -486,7 +486,7 @@ function renderEventCard(e) {
             >
             <span class="ov-det-event-time-badge ov-mono">${esc(e.timeLabel)}</span>
           </div>
-        </button>
+        </div>
         <div class="ov-det-event-details">
           <div class="ov-det-event-list-head">
             <h4 class="ov-det-event-title">${esc(e.eventType || e.title)}</h4>
@@ -501,7 +501,6 @@ function renderEventCard(e) {
             <span>${esc(e.dateLabel || '')} ${esc(e.timeLabel)}</span>
           </p>
         </div>
-        <button type="button" class="ov-det-event-list-action" data-action="open-event" data-event-id="${esc(e.id)}">View</button>
       </article>`;
 }
 
@@ -562,7 +561,7 @@ function refreshEventsGallery(force = false) {
 }
 
 function renderEventsGallery() {
-  return `${renderEventCards(getFilteredEvents())}${renderEventsLightbox()}`;
+  return renderEventCards(getFilteredEvents());
 }
 
 function openEventLightbox(eventId) {
@@ -692,7 +691,6 @@ function renderEventsCard() {
           <div class="ov-det-events-scroll" id="detEventsScroll">
             <div id="detEventsGalleryHost">${renderEventCards(getFilteredEvents())}</div>
           </div>
-          ${renderEventsLightbox()}
         </div>
       </div>
       <div class="ov-merged-accent" aria-hidden="true"></div>
@@ -817,30 +815,6 @@ function wireGalleryEvents() {
       refreshEventsGallery();
     });
   }
-  document.querySelectorAll('[data-action="open-event"]').forEach((btn) => {
-    btn.addEventListener('click', () => openEventLightbox(btn.dataset.eventId));
-  });
-
-  document.querySelectorAll('.ov-det-event-card').forEach((card) => {
-    card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openEventLightbox(card.dataset.eventId);
-      }
-    });
-  });
-
-  document.querySelectorAll('[data-action="close-event"]').forEach((el) => {
-    el.addEventListener('click', closeEventLightbox);
-  });
-
-  if (!document.body.dataset.detLightboxBound) {
-    document.body.dataset.detLightboxBound = 'true';
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeEventLightbox();
-    });
-  }
-
   applyCropToEventImages();
   startDemoEventImageLoops();
 }

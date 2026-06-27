@@ -3471,17 +3471,10 @@ body.ov-modal-open {
   border-radius: var(--radius-lg);
   background: var(--color-surface-muted);
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .ov-det-event-list-item {
   min-height: 88px;
-}
-
-.ov-det-event-card:hover {
-  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
-  box-shadow: var(--shadow-soft);
-  background: var(--color-surface);
 }
 
 .ov-det-event-thumb-btn {
@@ -3492,8 +3485,9 @@ body.ov-modal-open {
   padding: 0;
   border: none;
   background: transparent;
-  cursor: pointer;
+  cursor: default;
   text-align: left;
+  pointer-events: none;
 }
 
 .ov-det-event-thumb {
@@ -3592,24 +3586,7 @@ body.ov-modal-open {
 }
 
 .ov-det-event-list-action {
-  flex: 0 0 auto;
-  align-self: center;
-  margin-right: 14px;
-  padding: 8px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, color 0.2s;
-}
-
-.ov-det-event-list-action:hover {
-  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
-  background: var(--color-accent-muted);
-  color: var(--color-text-primary);
+  display: none;
 }
 
 .ov-det-event-title {
