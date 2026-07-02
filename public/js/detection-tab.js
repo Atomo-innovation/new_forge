@@ -7,16 +7,24 @@ let personSaveTimer = null;
 let dashEventWs = null;
 let dashWsConnected = false;
 let lastEventsFingerprint = '';
-const DEMO_EVENT_IMAGES = [
-  '/demo/i1.png',
-  '/demo/i2.png',
-  '/demo/i3.png',
-  '/demo/i4.png',
-  '/demo/i5.png',
-  '/demo/i6.png',
-  '/demo/i7.png',
-  '/demo/i8.png',
-];
+const DEMO_EVENT_IMAGES = slug === 'face'
+  ? [
+    '/demo/f1.png',
+    '/demo/f2.png',
+    '/demo/f3.png',
+    '/demo/f4.png',
+    '/demo/f5.png',
+  ]
+  : [
+    '/demo/i1.png',
+    '/demo/i2.png',
+    '/demo/i3.png',
+    '/demo/i4.png',
+    '/demo/i5.png',
+    '/demo/i6.png',
+    '/demo/i7.png',
+    '/demo/i8.png',
+  ];
 let demoImageLoopTimers = [];
 let demoEventTickTimer = null;
 let demoEventTickSeq = 0;
