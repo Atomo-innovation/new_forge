@@ -36,12 +36,11 @@ function demoNameForImage(src) {
 }
 function updateDemoNameBadge(img) {
   if (!img) return;
-  const thumb = img.closest('.ov-det-event-thumb');
-  const badge = thumb && thumb.querySelector('.ov-det-event-name-badge');
-  if (!badge) return;
+  const card = img.closest('.ov-det-event-list-item');
+  const titleEl = card && card.querySelector('.ov-det-event-title');
+  if (!titleEl) return;
   const name = demoNameForImage(img.dataset.demoImg || img.src);
-  badge.textContent = name;
-  badge.hidden = !name;
+  titleEl.textContent = name || titleEl.dataset.baseTitle || titleEl.textContent;
 }
 let demoImageLoopTimers = [];
 let demoEventTickTimer = null;
@@ -514,12 +513,11 @@ function renderEventCard(e) {
               decoding="async"
             >
             <span class="ov-det-event-time-badge ov-mono">${esc(e.timeLabel)}</span>
-            <span class="ov-det-event-name-badge"${nameInit ? '' : ' hidden'}>${esc(nameInit)}</span>
           </div>
         </div>
         <div class="ov-det-event-details">
           <div class="ov-det-event-list-head">
-            <h4 class="ov-det-event-title">${esc(e.eventType || e.title)}</h4>
+            <h4 class="ov-det-event-title" data-base-title="${esc(e.eventType || e.title)}">${esc(nameInit || e.eventType || e.title)}</h4>
             <span class="ov-badge ${severityBadge(e.severity)}">${esc(e.severity)}</span>
           </div>
           <p class="ov-det-event-list-summary">${esc(e.camera)} · ${esc(e.location || '—')}</p>
