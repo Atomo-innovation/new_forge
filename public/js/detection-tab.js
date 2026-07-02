@@ -25,6 +25,24 @@ const DEMO_EVENT_IMAGES = slug === 'face'
     '/demo/i7.png',
     '/demo/i8.png',
   ];
+const DEMO_FACE_NAMES = {
+  '/demo/f3.png': 'Mitesh',
+  '/demo/f4.png': 'Neha',
+};
+function demoNameForImage(src) {
+  if (!src) return '';
+  const clean = String(src).replace(/\?.*$/, '');
+  return DEMO_FACE_NAMES[clean] || '';
+}
+function updateDemoNameBadge(img) {
+  if (!img) return;
+  const thumb = img.closest('.ov-det-event-thumb');
+  const badge = thumb && thumb.querySelector('.ov-det-event-name-badge');
+  if (!badge) return;
+  const name = demoNameForImage(img.dataset.demoImg || img.src);
+  badge.textContent = name;
+  badge.hidden = !name;
+}
 let demoImageLoopTimers = [];
 let demoEventTickTimer = null;
 let demoEventTickSeq = 0;
@@ -60,6 +78,7 @@ function fadeDemoEventImage(img, nextSrc) {
     img.src = nextSrc;
     img.dataset.demoImg = nextSrc;
     img.classList.remove('is-fading');
+    updateDemoNameBadge(img);
   }, 220);
 }
 
@@ -78,6 +97,7 @@ function startDemoEventImageLoops() {
       || pickRandomDemoImage();
     img.dataset.demoImg = DEMO_EVENT_IMAGES.includes(initial) ? initial : pickRandomDemoImage();
     img.src = img.dataset.demoImg;
+    updateDemoNameBadge(img);
 
     const timer = window.setInterval(() => {
       if (document.hidden) return;
@@ -479,6 +499,7 @@ function renderEventCard(e) {
     : '';
   const cropClass = !useStaticImage && e.bbox && e.bbox.length >= 4 ? ' has-bbox-crop' : '';
   const imgSrc = demoCycle ? (e.imageUrl || pickRandomDemoImage()) : eventImageUrl(e);
+  const nameInit = demoCycle ? demoNameForImage(imgSrc) : '';
   return `
       <article class="ov-det-event-card ov-det-event-list-item" role="listitem" data-event-id="${esc(e.id)}">
         <div class="ov-det-event-thumb-btn">
@@ -493,6 +514,7 @@ function renderEventCard(e) {
               decoding="async"
             >
             <span class="ov-det-event-time-badge ov-mono">${esc(e.timeLabel)}</span>
+            <span class="ov-det-event-name-badge"${nameInit ? '' : ' hidden'}>${esc(nameInit)}</span>
           </div>
         </div>
         <div class="ov-det-event-details">

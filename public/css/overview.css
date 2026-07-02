@@ -3543,6 +3543,34 @@ body.ov-modal-open {
   font-weight: 600;
 }
 
+.ov-det-event-name-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: calc(100% - 20px);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay-dark);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ov-det-event-name-badge[hidden] {
+  display: none;
+}
+
+.ov-det-events-scroll .ov-det-event-name-badge {
+  left: 4px;
+  bottom: 4px;
+  padding: 2px 5px;
+  font-size: 9px;
+}
+
 .ov-det-event-details {
   padding: 12px 14px;
   display: flex;
