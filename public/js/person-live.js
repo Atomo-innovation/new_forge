@@ -9,8 +9,8 @@
     if (!isLiveTab) return;
 
     const DEMO_PEAK_COUNT = 8;
-    const DEMO_PREVIEW_VIDEO = '/demo/wnew23.mp4';
-    const DEMO_DETECTION_VIDEO = '/demo/dnew.mp4';
+    const DEMO_PREVIEW_VIDEO = isFaceTab ? '/demo/face1.mp4' : '/demo/wnew23.mp4';
+    const DEMO_DETECTION_VIDEO = isFaceTab ? '/demo/face2d.mp4' : '/demo/dnew.mp4';
     let demoVideoPreloaded = false;
     let demoVideoMode = null;
 
